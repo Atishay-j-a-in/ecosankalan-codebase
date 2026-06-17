@@ -314,32 +314,30 @@ export default function DashboardPage() {
             <button className="view-all-btn" onClick={() => navigate('/weekly-challenges')}>View All</button>
           </div>
           <div className="weekly-challenges-preview">
-            <div className="wc-preview-card" onClick={() => navigate('/weekly-challenges')}>
-              <div className="wc-preview-icon-wrap">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>recycling</span>
-              </div>
-              <div className="wc-preview-info">
-                <h4 className="wc-preview-title">Zero-Plastic Week</h4>
-                <div className="wc-preview-bar-wrap">
-                  <div className="wc-preview-bar"><div className="wc-preview-fill" style={{ width: '60%' }} /></div>
-                  <span className="wc-preview-pct">60%</span>
+            {CHALLENGES.slice(0, 2).map((ch, i) => {
+              const statusClass = ch.progress === 0 ? 'not-started' : (ch.progress >= 100 ? 'completed' : 'in-progress');
+              const iconClass = i === 1 ? 'wc-preview-icon-wrap secondary' : 'wc-preview-icon-wrap';
+              const iconName = i === 1 ? 'compost' : 'recycling';
+              return (
+                <div
+                  className="wc-preview-card"
+                  key={ch.id}
+                  onClick={() => navigate('/challenge-progress', { state: { challenge: ch } })}
+                >
+                  <div className={iconClass}>
+                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>{iconName}</span>
+                  </div>
+                  <div className="wc-preview-info">
+                    <h4 className="wc-preview-title">{ch.title}</h4>
+                    <div className="wc-preview-bar-wrap">
+                      <div className="wc-preview-bar"><div className="wc-preview-fill" style={{ width: `${ch.progress}%` }} /></div>
+                      <span className="wc-preview-pct">{ch.progress}%</span>
+                    </div>
+                  </div>
+                  <span className={`wc-preview-status ${statusClass}`}>{statusClass === 'not-started' ? 'Not Started' : statusClass === 'completed' ? 'Completed' : 'In Progress'}</span>
                 </div>
-              </div>
-              <span className="wc-preview-status in-progress">In Progress</span>
-            </div>
-            <div className="wc-preview-card" onClick={() => navigate('/weekly-challenges')}>
-              <div className="wc-preview-icon-wrap secondary">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>compost</span>
-              </div>
-              <div className="wc-preview-info">
-                <h4 className="wc-preview-title">Compost Master</h4>
-                <div className="wc-preview-bar-wrap">
-                  <div className="wc-preview-bar"><div className="wc-preview-fill" style={{ width: '0%' }} /></div>
-                  <span className="wc-preview-pct">0%</span>
-                </div>
-              </div>
-              <span className="wc-preview-status not-started">Not Started</span>
-            </div>
+              );
+            })}
             <button className="wc-see-all-btn" onClick={() => navigate('/weekly-challenges')}>
               <span className="material-symbols-outlined">grid_view</span>
               See All Weekly Challenges
