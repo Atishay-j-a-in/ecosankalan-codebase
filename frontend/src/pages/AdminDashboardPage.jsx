@@ -105,7 +105,16 @@ export default function AdminDashboardPage() {
     <div style={{ background: 'var(--background)', minHeight: '100vh', paddingBottom: '80px' }}>
       <Navbar />
       <main style={{ padding: '1rem', maxWidth: '600px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--on-surface)' }}>Admin Dashboard</h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <h1 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--on-surface)' }}>Admin Dashboard</h1>
+          <button 
+            onClick={() => navigate('/dashboard')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'var(--surface-variant)', color: 'var(--on-surface-variant)', border: 'none', padding: '0.5rem 0.75rem', borderRadius: '8px', fontSize: '0.875rem', cursor: 'pointer' }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>arrow_back</span>
+            User View
+          </button>
+        </div>
         
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>

@@ -1,0 +1,16 @@
+{
+  "name": "EcoSankalan",
+  "short_name": "EcoSankalan",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f8faf8",
+  "theme_color": "#005127",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
