@@ -59,3 +59,7 @@ temp/
 # ── MongoDB dump (never commit raw DB data) ──
 *.dump
 dump/
+
+# -- Project Irrelevant Files ------------------
+BACKEND_DEV_DOCUMENTATION.md
+MOBILE_TESTING.md
