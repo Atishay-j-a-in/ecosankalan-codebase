@@ -5,7 +5,7 @@ const connectDB = async () => {
     console.log("Attempting to connect to MongoDB...");
 
     // Now securely reading from your .env file
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
+    const conn = await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
     });
