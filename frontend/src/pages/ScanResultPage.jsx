@@ -131,6 +131,92 @@ export default function ScanResultPage() {
           </button>
         </section>
 
+        {/* ── Bin Drop Animation ── */}
+        <section className="scan-bin-animation-card" style={{ background: 'var(--surface)', margin: '1rem', padding: '1.5rem', borderRadius: '16px', textAlign: 'center', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: 'var(--on-surface)' }}>Smart Disposal Guide</h3>
+          
+          <div style={{ position: 'relative', height: '110px', display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', paddingBottom: '10px' }}>
+            
+            {/* Falling waste item */}
+            <div style={{
+              position: 'absolute',
+              top: '0',
+              left: ['plastic', 'paper', 'metal'].includes(category) ? '16.6%' : category === 'organic' ? '50%' : '83.3%',
+              transform: 'translateX(-50%)',
+              animation: 'dropWaste 2.5s infinite ease-in-out',
+              zIndex: 10
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '2.5rem', color: 'var(--on-surface-variant)' }}>
+                {category === 'plastic' ? 'water_bottle' : category === 'paper' ? 'description' : category === 'organic' ? 'compost' : category === 'metal' ? 'settings' : 'devices'}
+              </span>
+            </div>
+
+            {/* Colored Bins */}
+            {[
+              { id: 'blue', color: '#2196F3', label: 'Blue Bin (Dry/Recyclables)' },
+              { id: 'green', color: '#4CAF50', label: 'Green Bin (Wet/Organic)' },
+              { id: 'red', color: '#F44336', label: 'Red Bin (Reject/Hazardous)' }
+            ].map(bin => {
+              const targetColor = ['plastic', 'paper', 'metal'].includes(category) ? 'blue' : category === 'organic' ? 'green' : 'red';
+              const isTarget = targetColor === bin.id;
+              
+              return (
+                <div key={bin.id} style={{ 
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  opacity: isTarget ? 1 : 0.3,
+                  transform: isTarget ? 'scale(1.15)' : 'scale(0.9)',
+                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}>
+                  <div style={{
+                    width: '48px', height: '60px',
+                    backgroundColor: bin.color,
+                    borderRadius: '4px 4px 12px 12px',
+                    position: 'relative',
+                    border: '3px solid rgba(0,0,0,0.1)'
+                  }}>
+                    {/* Bin lid */}
+                    <div style={{
+                      position: 'absolute', top: '-8px', left: '-6px', right: '-6px', height: '8px',
+                      backgroundColor: bin.color,
+                      borderRadius: '4px',
+                      transformOrigin: 'left bottom',
+                      animation: isTarget ? 'openLid 2.5s infinite ease-in-out' : 'none'
+                    }} />
+                    {/* Bin body lines */}
+                    <div style={{ position: 'absolute', top: '10px', bottom: '10px', left: '12px', width: '4px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px' }} />
+                    <div style={{ position: 'absolute', top: '10px', bottom: '10px', right: '12px', width: '4px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ 
+            marginTop: '1.5rem', 
+            fontWeight: '600', 
+            fontSize: '1.05rem',
+            color: ['plastic', 'paper', 'metal'].includes(category) ? '#1565C0' : category === 'organic' ? '#2E7D32' : '#C62828',
+            background: ['plastic', 'paper', 'metal'].includes(category) ? '#E3F2FD' : category === 'organic' ? '#E8F5E9' : '#FFEBEE',
+            padding: '0.75rem',
+            borderRadius: '8px'
+          }}>
+            Drop this in the {['plastic', 'paper', 'metal'].includes(category) ? 'Blue Bin (Dry Waste)' : category === 'organic' ? 'Green Bin (Wet Waste)' : 'Red Bin (E-Waste / Other)'}
+          </div>
+
+          <style>{`
+            @keyframes dropWaste {
+              0% { top: -20px; opacity: 0; transform: translateX(-50%) scale(0.5) rotate(-20deg); }
+              15% { opacity: 1; transform: translateX(-50%) scale(1) rotate(0deg); }
+              60% { top: 55px; opacity: 1; transform: translateX(-50%) scale(0.6) rotate(15deg); }
+              75%, 100% { top: 75px; opacity: 0; transform: translateX(-50%) scale(0.2); }
+            }
+            @keyframes openLid {
+              0%, 100% { transform: rotate(0deg); }
+              15%, 65% { transform: rotate(-55deg); }
+            }
+          `}</style>
+        </section>
+
         {/* ── Disposal Tip (FR-06) ── */}
         <section className="scan-disposal-card">
           <div className="scan-disposal-header">
