@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
-import { getActiveChallenges } from '../services/api';
+import { getActiveChallenges, joinChallenge } from '../services/api';
 import '../styles/weekly-challenges.css';
 
 const FILTER_TABS = ['All', 'In Progress', 'Not Started', 'Completed'];
@@ -64,11 +64,22 @@ export default function WeeklyChallengesPage() {
     })();
   }, []);
 
+  const handleJoin = async (challengeId) => {
+    try {
+      await joinChallenge(challengeId);
+      const { data } = await getActiveChallenges();
+      setChallenges(data);
+    } catch (err) {
+      setError(err.message || 'Failed to join challenge');
+    }
+  };
+
   const enriched = challenges.map(ch => ({
     ...ch,
     _status:  deriveStatus(ch),
     _percent: derivePercent(ch),
     _timeLeft: timeLeft(ch.deadline),
+    _joined:  !!ch.progress?._id,
   }));
 
   const visible = tab === 'All'
@@ -206,6 +217,11 @@ export default function WeeklyChallengesPage() {
                 {/* CTA */}
                 {isCompleted ? (
                   <div className="wc-completed-label">Challenge Completed ✓</div>
+                ) : !ch._joined ? (
+                  <button className="wc-btn start" onClick={() => handleJoin(ch._id)}
+                    style={{ background: 'var(--tertiary)', color: 'var(--on-tertiary)' }}>
+                    Join Challenge
+                  </button>
                 ) : ch._status === 'In Progress' ? (
                   <button className="wc-btn continue"
                     onClick={() => navigate('/challenge-progress', { state: buildNavState(ch) })}>

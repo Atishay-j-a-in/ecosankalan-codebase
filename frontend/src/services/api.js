@@ -195,6 +195,35 @@ export const unlockVoucher = (partnerName) =>
   api.post('/api/v1/vouchers/unlock', { partnerName });
 
 // ════════════════════════════════════════════════════════════════════════════
+// CHALLENGES — ADMIN
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * POST /challenges — Admin creates a new challenge
+ */
+export const createChallenge = (data) => api.post('/api/v1/challenges', data);
+
+/**
+ * PUT /challenges/:id — Admin updates a challenge
+ */
+export const updateChallenge = (id, data) => api.put(`/api/v1/challenges/${id}`, data);
+
+/**
+ * DELETE /challenges/:id — Admin soft-deletes a challenge
+ */
+export const deleteChallenge = (id) => api.delete(`/api/v1/challenges/${id}`);
+
+/**
+ * GET /challenges/admin — Admin lists all challenges
+ */
+export const getAdminChallenges = () => api.get('/api/v1/challenges/admin');
+
+/**
+ * POST /challenges/:id/join — User joins a challenge
+ */
+export const joinChallenge = (challengeId) => api.post(`/api/v1/challenges/${challengeId}/join`);
+
+// ════════════════════════════════════════════════════════════════════════════
 // ADMIN  (FR-20, FR-25)
 // ════════════════════════════════════════════════════════════════════════════
 
