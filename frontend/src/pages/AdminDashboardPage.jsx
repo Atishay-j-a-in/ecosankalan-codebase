@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
-import { getAdminStats, createBin, createEvent, bulkImportVouchers } from '../services/api';
+import { getAdminStats, createBin, createEvent, bulkImportVouchers, createChallenge, updateChallenge, deleteChallenge, getAdminChallenges } from '../services/api';
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
 
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
@@ -11,8 +13,14 @@ export default function AdminDashboardPage() {
   const [error, setError] = useState('');
   
   // Forms state
-  const [activeTab, setActiveTab] = useState('stats'); // 'stats', 'bins', 'events', 'vouchers'
+  const [activeTab, setActiveTab] = useState('stats'); // 'stats', 'bins', 'events', 'vouchers', 'challenges'
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Challenges state
+  const [challenges, setChallenges] = useState([]);
+  const [challengesLoading, setChallengesLoading] = useState(false);
+  const [editingChallenge, setEditingChallenge] = useState(null);
+  const [challengeTasks, setChallengeTasks] = useState([{ action: '', targetCount: 1, category: '' }]);
 
   useEffect(() => {
     loadStats();
@@ -88,6 +96,99 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const loadChallenges = async () => {
+    setChallengesLoading(true);
+    try {
+      const { data } = await getAdminChallenges();
+      setChallenges(data);
+    } catch (err) {
+      setError(err.message || 'Failed to load challenges');
+    } finally {
+      setChallengesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'challenges') loadChallenges();
+  }, [activeTab]);
+
+  const handleCreateChallenge = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const tasks = challengeTasks.filter(t => t.action.trim());
+    if (tasks.length === 0) {
+      setError('At least one task is required');
+      return;
+    }
+    try {
+      await createChallenge({
+        title: fd.get('title'),
+        description: fd.get('description'),
+        startDate: fd.get('startDate'),
+        expiryDate: fd.get('expiryDate'),
+        rewardPoints: parseInt(fd.get('rewardPoints')) || 0,
+        rewardVoucherPartner: fd.get('rewardVoucherPartner') || undefined,
+        tasks,
+      });
+      setSuccessMsg('Challenge created successfully!');
+      e.target.reset();
+      setChallengeTasks([{ action: '', targetCount: 1, category: '' }]);
+      loadChallenges();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleUpdateChallenge = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const payload = {
+      title: fd.get('title'),
+      description: fd.get('description'),
+      startDate: fd.get('startDate'),
+      expiryDate: fd.get('expiryDate'),
+      rewardPoints: parseInt(fd.get('rewardPoints')) || 0,
+      rewardVoucherPartner: fd.get('rewardVoucherPartner') || undefined,
+    };
+    if (editingChallenge.tasks) {
+      payload.tasks = editingChallenge.tasks;
+    }
+    try {
+      const { data } = await updateChallenge(editingChallenge._id, payload);
+      setSuccessMsg('Challenge updated successfully!');
+      setEditingChallenge(null);
+      loadChallenges();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleDeleteChallenge = async (id) => {
+    if (!window.confirm('Deactivate this challenge? It will be hidden from users.')) return;
+    try {
+      await deleteChallenge(id);
+      setSuccessMsg('Challenge deactivated');
+      loadChallenges();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleTaskChange = (index, field, value) => {
+    const updated = [...challengeTasks];
+    updated[index] = { ...updated[index], [field]: value };
+    setChallengeTasks(updated);
+  };
+
+  const addTaskRow = () => {
+    setChallengeTasks([...challengeTasks, { action: '', targetCount: 1, category: '' }]);
+  };
+
+  const removeTaskRow = (index) => {
+    if (challengeTasks.length <= 1) return;
+    setChallengeTasks(challengeTasks.filter((_, i) => i !== index));
+  };
+
   const cardStyle = {
     background: 'var(--surface-container)',
     padding: '1.5rem',
@@ -118,7 +219,7 @@ export default function AdminDashboardPage() {
         
         {/* Tabs */}
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-          {['stats', 'bins', 'events', 'vouchers'].map(tab => (
+          {['stats', 'bins', 'events', 'vouchers', 'challenges'].map(tab => (
             <button 
               key={tab} 
               onClick={() => { setActiveTab(tab); setError(''); setSuccessMsg(''); }}
@@ -262,6 +363,98 @@ export default function AdminDashboardPage() {
                 Import Vouchers
               </button>
             </form>
+          </div>
+        )}
+
+        {activeTab === 'challenges' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Create / Edit Challenge */}
+            <div style={cardStyle}>
+              <h2 style={{ marginBottom: '1rem', fontSize: '1.2rem' }}>
+                {editingChallenge ? 'Edit Challenge' : 'Create New Challenge'}
+              </h2>
+              <form onSubmit={editingChallenge ? handleUpdateChallenge : handleCreateChallenge}>
+                <input name="title" placeholder="Challenge Title" defaultValue={editingChallenge?.title || ''} required style={inputStyle} />
+                <textarea name="description" placeholder="Description" defaultValue={editingChallenge?.description || ''} required style={{...inputStyle, height: '80px'}} />
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <input name="startDate" type="date" defaultValue={editingChallenge?.startDate ? editingChallenge.startDate.slice(0, 10) : todayStr()} required style={inputStyle} />
+                  <input name="expiryDate" type="date" defaultValue={editingChallenge?.expiryDate ? editingChallenge.expiryDate.slice(0, 10) : ''} required style={inputStyle} />
+                </div>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <input name="rewardPoints" type="number" placeholder="Reward Points" defaultValue={editingChallenge?.rewardPoints || 0} style={inputStyle} />
+                  <input name="rewardVoucherPartner" placeholder="Voucher Partner (optional)" defaultValue={editingChallenge?.rewardVoucherPartner || ''} style={inputStyle} />
+                </div>
+
+                {/* Tasks */}
+                <p style={{ fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.9rem' }}>Tasks</p>
+                {!editingChallenge && challengeTasks.map((task, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                    <input placeholder="Action (e.g. log_waste)" value={task.action} onChange={(e) => handleTaskChange(i, 'action', e.target.value)} required style={{...inputStyle, marginBottom: 0, flex: 2}} />
+                    <input type="number" placeholder="Target" value={task.targetCount} onChange={(e) => handleTaskChange(i, 'targetCount', parseInt(e.target.value) || 1)} min="1" required style={{...inputStyle, marginBottom: 0, flex: 1}} />
+                    <input placeholder="Category" value={task.category} onChange={(e) => handleTaskChange(i, 'category', e.target.value)} style={{...inputStyle, marginBottom: 0, flex: 1}} />
+                    <button type="button" onClick={() => removeTaskRow(i)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: '0.25rem' }}>
+                      <span className="material-symbols-outlined">remove_circle</span>
+                    </button>
+                  </div>
+                ))}
+                {!editingChallenge && (
+                  <button type="button" onClick={addTaskRow} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'none', border: '1px dashed var(--outline)', borderRadius: '8px', padding: '0.5rem', width: '100%', justifyContent: 'center', cursor: 'pointer', color: 'var(--on-surface-variant)', marginBottom: '1rem' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>add</span> Add Task
+                  </button>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="submit" style={{ flex: 1, padding: '0.75rem', background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                    {editingChallenge ? 'Update Challenge' : 'Create Challenge'}
+                  </button>
+                  {editingChallenge && (
+                    <button type="button" onClick={() => setEditingChallenge(null)} style={{ padding: '0.75rem', background: 'var(--surface-variant)', color: 'var(--on-surface-variant)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            {/* Challenge List */}
+            <div style={cardStyle}>
+              <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="material-symbols-outlined" style={{color: 'var(--primary)'}}>list</span> All Challenges
+              </h3>
+
+              {challengesLoading ? (
+                <p><span className="material-symbols-outlined log-spin">progress_activity</span> Loading...</p>
+              ) : challenges.length === 0 ? (
+                <p style={{ color: 'var(--outline)' }}>No challenges created yet.</p>
+              ) : (
+                challenges.map(ch => (
+                  <div key={ch._id} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '0.75rem', marginBottom: '0.5rem',
+                    background: ch.isActive ? 'var(--surface-container)' : 'var(--surface-variant)',
+                    borderRadius: '8px', opacity: ch.isActive ? 1 : 0.6,
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 600, fontSize: '0.9rem' }}>{ch.title}</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--outline)' }}>
+                        {ch.startDate?.slice(0, 10)} → {ch.expiryDate?.slice(0, 10)} | {ch.tasks?.length || 0} tasks | {ch.rewardPoints} pts
+                        {!ch.isActive && <span style={{ color: 'var(--error)', marginLeft: '0.5rem' }}>(inactive)</span>}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button onClick={() => setEditingChallenge(ch)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}>
+                        <span className="material-symbols-outlined">edit</span>
+                      </button>
+                      {ch.isActive && (
+                        <button onClick={() => handleDeleteChallenge(ch._id)} style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}>
+                          <span className="material-symbols-outlined">delete</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         )}
 
