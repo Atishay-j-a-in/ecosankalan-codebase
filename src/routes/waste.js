@@ -78,7 +78,7 @@ router.post('/log', async (req, res) => {
   }
 });
 
-// GET /waste/history — paginated waste history for logged-in user
+// GET /waste/history — paginated waste history for logged-in user 
 router.get('/history', async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
