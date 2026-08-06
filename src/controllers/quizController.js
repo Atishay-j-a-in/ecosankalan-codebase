@@ -8,7 +8,7 @@ exports.submitQuiz = async (req, res) => {
   try {
     // 1. Save the result
     await QuizResult.create({ userId, category, score });
-
+    
     // 2. Logic for 'Segregation Master' (Check unique categories completed)
     const completedCategories = await QuizResult.distinct('category', { userId });
     

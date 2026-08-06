@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from 'react';
+import { removeFCMToken } from '../services/notificationService';
 
 const AuthContext = createContext();
 
@@ -25,6 +26,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    const fcmToken = localStorage.getItem('fcm_token');
+    if (fcmToken) {
+      removeFCMToken(fcmToken).catch(() => {});
+    }
+    localStorage.removeItem('fcm_token');
+    localStorage.removeItem('fcm_device_id');
     localStorage.removeItem('user');
     localStorage.removeItem('token');
     setUser(null);

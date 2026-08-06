@@ -37,7 +37,7 @@ const sanitizeUser = (user) => {
   if (!obj) return obj;
   delete obj.passwordHash;
   delete obj.otp;
-  delete obj.fcmToken;
+  delete obj.fcmTokens;
   delete obj.__v;
   return obj;
 };

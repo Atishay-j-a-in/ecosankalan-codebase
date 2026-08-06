@@ -34,11 +34,12 @@ const binRoutes = require('./routes/bins');
 const eventRoutes = require('./routes/events');
 const productRoutes = require('./routes/products');
 const orderRoutes = require('./routes/orders');
-
+const notificationRoutes = require("./routes/notification");
 const challengeRoutes = require('./routes/challenges');
 const voucherRoutes = require('./routes/vouchers');
 const adminRoutes = require('./routes/admin');
 const aiRoutes = require('./routes/ai');
+const markerRoutes = require('./routes/markers');
 // Middleware imports
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
@@ -147,6 +148,12 @@ app.use('/api/v1/challenges', challengeRoutes); // Month 4
 app.use('/api/v1/vouchers', voucherRoutes);     // Month 5
 app.use('/api/v1/admin', adminRoutes);          // Month 6
 app.use('/api/v1/ai', aiRoutes);                // AI waste scan
+app.use('/api/v1/markers', markerRoutes);        // Map markers
+
+
+//notification 
+app.use("/api/notifications", notificationRoutes);
+
 
 // Root route
 app.get('/', (req, res) => {
@@ -157,6 +164,7 @@ app.get('/', (req, res) => {
     project: 'NSUT CPVS-STP 2025-26(E)',
   });
 });
+
 
 // ─────────────────────────────────────────────────
 // 8. 404 & ERROR HANDLERS (always last)

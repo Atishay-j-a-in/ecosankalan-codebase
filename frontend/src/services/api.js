@@ -104,6 +104,17 @@ export const getNearbyBins = ({ lat, lng, radius = 5000 }) =>
 export const createBin = (data) => api.post('/api/v1/bins', data);
 
 // ════════════════════════════════════════════════════════════════════════════
+// MAP MARKERS  (from DB — no direct OSM calls)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /markers?north=&south=&east=&west=&categories=
+ * Returns waste location markers within the bounding box
+ */
+export const getMapMarkers = (bounds) =>
+  api.get('/api/v1/markers', { params: bounds });
+
+// ════════════════════════════════════════════════════════════════════════════
 // EVENTS  (FR-13, FR-14)
 // ════════════════════════════════════════════════════════════════════════════
 
