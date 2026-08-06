@@ -81,9 +81,16 @@ const userSchema = new mongoose.Schema(
       type: { type: String, enum: ['Point'] },
       coordinates: { type: [Number] },
     },
-    fcmToken: {
-      type: String,
-      default: null,
+    fcmTokens: {
+      type: [
+        {
+          token: { type: String, required: true },
+          device: { type: String, default: 'unknown' },
+          createdAt: { type: Date, default: Date.now },
+          updatedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
       select: false,
     },
   },
@@ -93,7 +100,7 @@ const userSchema = new mongoose.Schema(
       transform(doc, ret) {
         delete ret.passwordHash;
         delete ret.otp;
-        delete ret.fcmToken;
+        delete ret.fcmTokens;
         delete ret.__v;
         return ret;
       },

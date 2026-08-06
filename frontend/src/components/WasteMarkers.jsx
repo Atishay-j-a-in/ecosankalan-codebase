@@ -1,22 +1,6 @@
-/**
- * WasteMarkers.jsx — Renders Overpass-sourced waste locations on the Leaflet map.
- *
- * Features:
- *  - Debounced fetch on map pan/zoom (1s)
- *  - Global deduped location store (never re-fetches already-seen points)
- *  - Non-cancelling: in-flight requests always resolve; results cached immediately
- *  - Cached markers always visible — never cleared mid-fetch
- *  - MarkerCluster when >500 markers
- *  - Category-based icon markers (trash bin, recycling, etc.)
- *  - Toggleable filters without re-fetching
- *  - Loading indicator
- */
-
 import { useEffect, useRef, useCallback, useState } from 'react';
 import 'leaflet.markercluster';
-import { fetchWasteLocations } from '../lib/overpass';
-import { parseOverpassResponse } from '../lib/parser';
-import { locationStore } from '../lib/locationStore';
+import { getMapMarkers } from '../services/api';
 
 /* ── Marker palette: color + Material Symbol icon per category ──── */
 const CATEGORY_META = {
@@ -27,7 +11,6 @@ const CATEGORY_META = {
   landfill:               { label: 'Landfills',          color: '#B71C1C', icon: 'terrain',          bgColor: '#ffebee' },
 };
 
-/* ── Default active categories ─────────────────────────────────── */
 const DEFAULT_CATEGORIES = [
   { key: 'waste_basket',          active: true },
   { key: 'recycling',             active: true },
@@ -35,8 +18,6 @@ const DEFAULT_CATEGORIES = [
   { key: 'waste_transfer_station',active: true },
   { key: 'landfill',              active: true },
 ];
-
-/* ── Helpers ───────────────────────────────────────────────────── */
 
 function locationToFilterKey(loc) {
   const cat = loc.category;
@@ -100,43 +81,31 @@ function buildPopupHTML(loc, filterKey) {
   `;
 }
 
-/* ── Main Component ────────────────────────────────────────────── */
-
 export default function WasteMarkers({ map, onMarkerClick }) {
   const [loading, setLoading] = useState(false);
   const [error, setError]       = useState(null);
-  const [retryIn, setRetryIn]   = useState(0);
-  const [zoomMsg, setZoomMsg]   = useState('');
   const [chipState, setChipState] = useState(DEFAULT_CATEGORIES);
 
   const layerRef        = useRef(null);
   const debounceRef     = useRef(null);
   const clusterEnabled  = useRef(false);
   const categoriesRef   = useRef(DEFAULT_CATEGORIES);
-  const inFlightCount   = useRef(0);
+  const locationsRef    = useRef([]);
   const onMarkerClickRef = useRef(onMarkerClick);
 
-  // Keep ref in sync with latest callback from parent
   useEffect(() => {
     onMarkerClickRef.current = onMarkerClick;
   }, [onMarkerClick]);
 
-  /* ── Render all locations currently visible in viewport ─────── */
   const renderMarkers = useCallback(() => {
     if (!map || !window.L) return;
 
     const L = window.L;
-    const b = map.getBounds();
     const activeKeys = new Set(
       categoriesRef.current.filter(c => c.active).map(c => c.key)
     );
 
-    const locations = locationStore.getWithin({
-      south: b.getSouth(), west: b.getWest(),
-      north: b.getNorth(), east: b.getEast(),
-    });
-
-    console.log('[WasteMarkers] renderMarkers: store size=' + locationStore.size + ' visible=' + locations.length);
+    const locations = locationsRef.current;
 
     if (layerRef.current) {
       layerRef.current.clearLayers();
@@ -183,92 +152,61 @@ export default function WasteMarkers({ map, onMarkerClick }) {
       });
       layerRef.current.addLayer(marker);
     }
-  }, [map]); // ← ONLY depends on map. Stable.
+  }, [map]);
 
-  /* ── Fetch Overpass data — never cancels, results always cached ── */
-  const fetchData = useCallback(async (bounds, zoom) => {
-    console.log('[WasteMarkers] fetchData called, zoom=' + zoom, bounds);
+  const fetchData = useCallback(async (bounds) => {
+    if (!bounds) return;
 
-    if (zoom != null && zoom < 5) {
-      setZoomMsg('Zoom in to load waste spots for this area');
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    setZoomMsg('');
-
-    if (locationStore.hasFetched(bounds)) {
-      console.log('[WasteMarkers] Already fetched this area, rendering from cache');
-      renderMarkers();
-      return;
-    }
-
-    inFlightCount.current++;
     setLoading(true);
     setError(null);
 
     try {
-      console.log('[WasteMarkers] Fetching Overpass...');
-      const data = await fetchWasteLocations(bounds);
-      const locations = parseOverpassResponse(data);
-      console.log('[WasteMarkers] Got ' + locations.length + ' locations from ' + (data.elements?.length || 0) + ' elements');
+      const { data } = await getMapMarkers({
+        north: bounds.north,
+        south: bounds.south,
+        east: bounds.east,
+        west: bounds.west,
+      });
 
-      locationStore.add(locations);
-      locationStore.markFetched(bounds);
-      console.log('[WasteMarkers] Store size now: ' + locationStore.size);
-
+      locationsRef.current = data.locations || [];
       renderMarkers();
     } catch (err) {
-      if (err.message.startsWith('Rate limited')) {
-        const match = err.message.match(/(\d+)s/);
-        const seconds = match ? parseInt(match[1], 10) : 10;
-        setRetryIn(seconds);
-        const countdown = setInterval(() => {
-          setRetryIn(prev => {
-            if (prev <= 1) { clearInterval(countdown); return 0; }
-            return prev - 1;
-          });
-        }, 1000);
-      }
       console.error('[WasteMarkers] Fetch error:', err);
-      setError(err.message);
+      setError(err.message || 'Failed to load markers');
     } finally {
-      inFlightCount.current--;
-      if (inFlightCount.current === 0) setLoading(false);
+      setLoading(false);
     }
-  }, [renderMarkers]); // ← stable because renderMarkers is stable
+  }, [renderMarkers]);
 
-  /* ── Debounced map move handler ────────────────────────────── */
   const onMapMove = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       if (!map) return;
       const b = map.getBounds();
       fetchData({
-        south: b.getSouth(), west: b.getWest(),
-        north: b.getNorth(), east: b.getEast(),
-      }, map.getZoom());
-    }, 1000);
-  }, [map, fetchData]); // ← stable
+        north: b.getNorth(),
+        south: b.getSouth(),
+        east: b.getEast(),
+        west: b.getWest(),
+      });
+    }, 500);
+  }, [map, fetchData]);
 
-  /* ── Attach map events — runs ONCE, never re-runs ────────────── */
   useEffect(() => {
     if (!map) return;
-
-    console.log('[WasteMarkers] Effect running — attaching map events');
 
     map.on('moveend', onMapMove);
     map.on('zoomend', onMapMove);
 
-    // Initial fetch
     const b = map.getBounds();
     fetchData({
-      south: b.getSouth(), west: b.getWest(),
-      north: b.getNorth(), east: b.getEast(),
-    }, map.getZoom());
+      north: b.getNorth(),
+      south: b.getSouth(),
+      east: b.getEast(),
+      west: b.getWest(),
+    });
 
     return () => {
-      console.log('[WasteMarkers] Effect cleanup');
       map.off('moveend', onMapMove);
       map.off('zoomend', onMapMove);
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -277,9 +215,8 @@ export default function WasteMarkers({ map, onMarkerClick }) {
         layerRef.current = null;
       }
     };
-  }, [map]); // ← ONLY depends on map. Never re-runs.
+  }, [map]);
 
-  /* ── Filter toggle ───────────────────────────────────────── */
   const toggleCategory = (key) => {
     setChipState(prev => {
       const next = prev.map(c => c.key === key ? { ...c, active: !c.active } : c);
@@ -292,7 +229,6 @@ export default function WasteMarkers({ map, onMarkerClick }) {
     renderMarkers();
   }, [chipState, renderMarkers]);
 
-  /* ── Render ──────────────────────────────────────────────────── */
   return (
     <div className="waste-markers-ui">
       <div className="waste-filter-chips">
@@ -319,35 +255,21 @@ export default function WasteMarkers({ map, onMarkerClick }) {
       {loading && (
         <div className="waste-loading-badge">
           <span className="material-symbols-outlined" style={{ fontSize: '1rem', animation: 'spin 1s linear infinite' }}>progress_activity</span>
-          <span>Fetching OSM data...</span>
+          <span>Loading markers...</span>
         </div>
       )}
 
-      {!loading && retryIn > 0 && (
-        <div className="waste-loading-badge" style={{ background: '#fff3e0', color: '#E65100' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>timer</span>
-          <span>Rate limited. Retry in {retryIn}s</span>
-        </div>
-      )}
-
-      {!loading && !retryIn && zoomMsg && (
-        <div className="waste-loading-badge">
-          <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>zoom_in</span>
-          <span>{zoomMsg}</span>
-        </div>
-      )}
-
-      {error && (
+      {!loading && error && (
         <div className="waste-error-badge">
           <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>error</span>
-          <span>Could not load OSM data. Try zooming in or </span>
+          <span>Could not load markers. </span>
           <button className="waste-retry-btn" onClick={() => {
             if (!map) return;
             const b = map.getBounds();
             fetchData({
-              south: b.getSouth(), west: b.getWest(),
-              north: b.getNorth(), east: b.getEast(),
-            }, map.getZoom());
+              north: b.getNorth(), south: b.getSouth(),
+              east: b.getEast(), west: b.getWest(),
+            });
           }}>retry</button>
         </div>
       )}

@@ -5,6 +5,8 @@ import BottomNav from '../components/common/BottomNav';
 import DashboardSkeleton from '../components/dashboard/DashboardSkeleton';
 import TutorialOverlay from '../components/common/TutorialOverlay';
 import { getWasteStats, getActiveChallenges, getUpcomingEvents, getProfile } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+
 import '../styles/dashboard.css';
 
 const WASTE_FACTS = [
@@ -28,6 +30,8 @@ const computeEcoScore = (stats) => {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+ 
 
   const [factIndex,   setFactIndex]   = useState(0);
   const [loading,     setLoading]     = useState(true);

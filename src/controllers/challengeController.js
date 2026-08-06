@@ -1,6 +1,7 @@
-const Challenge = require('../models/Challenge');
-const ChallengeProgress = require('../models/ChallengeProgress');
-const { issueReward } = require('../services/rewardEngine');
+const Challenge = require('../models/Challenge.js');
+const ChallengeProgress = require('../models/ChallengeProgress.js');
+const { issueReward } = require('../services/rewardEngine.js');
+const NotificationService = require("../services/notificationService.js");
 
 const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
@@ -61,8 +62,9 @@ exports.createChallenge = async (req, res) => {
       startDate: start,
       expiryDate: expiry,
     });
-
+    await NotificationService.challengeCreated(challenge);
     res.status(201).json({ success: true, challenge });
+
   } catch (err) {
     if (err?.name === 'ValidationError') {
       return res.status(400).json({
@@ -70,6 +72,7 @@ exports.createChallenge = async (req, res) => {
         message: Object.values(err.errors)[0]?.message || 'Invalid challenge data',
       });
     }
+    console.log("Error creating challenge:", err);
     res.status(500).json({ success: false, message: 'Failed to create challenge' });
   }
 };
