@@ -62,23 +62,14 @@ app.use(helmet());
 // ─────────────────────────────────────────────────
 // Supports:
 // - CLIENT_URL (single origin, per task acceptance criteria)
-// - ALLOWED_ORIGINS (comma-separated, existing setup)
-const allowedOrigins = [
-  ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : []),
-  ...(process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : ['http://localhost:3000']
-  ),
-]
-  .map((o) => (o || '').trim())
-  .filter(Boolean);
+const clientUrl = (process.env.CLIENT_URL || 'http://localhost:3000').trim();
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (e.g. Postman, mobile apps)
-      // Or if we are in development mode, allow anything!
-      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      // Only allow the configured frontend client origin.
+      if (!origin || origin === clientUrl) {
         callback(null, true);
       } else {
         callback(new Error(`CORS policy: origin ${origin} not allowed`));
