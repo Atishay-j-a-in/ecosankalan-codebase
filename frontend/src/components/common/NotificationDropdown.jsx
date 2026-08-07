@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useNotifications } from "../context/NotificationContext";
+import { useNotifications } from "../../context/NotificationContext";
 import "../../styles/NotificationDropdown.css";
 
 export default function NotificationDropdown({ onClose }) {
