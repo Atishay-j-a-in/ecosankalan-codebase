@@ -60,4 +60,33 @@
   transition: background 0.15s;
 }
 .navbar-icon-btn:hover { background: var(--surface-container-high); }
+.notification-wrapper {
+  position: relative;
+}
 
+.notification-badge {
+  position: absolute;
+
+  top: 2px;
+  right: 2px;
+
+  min-width: 18px;
+  height: 18px;
+
+  padding: 0 5px;
+
+  border-radius: 999px;
+
+  background: #ef4444;
+
+  color: white;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  line-height: 1;
+}

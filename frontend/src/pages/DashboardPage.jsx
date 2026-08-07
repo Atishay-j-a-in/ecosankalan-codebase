@@ -6,7 +6,7 @@ import DashboardSkeleton from '../components/dashboard/DashboardSkeleton';
 import TutorialOverlay from '../components/common/TutorialOverlay';
 import { getWasteStats, getActiveChallenges, getUpcomingEvents, getProfile } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-
+import useFCM from '../hooks/useFCM';
 import '../styles/dashboard.css';
 
 const WASTE_FACTS = [
@@ -31,7 +31,7 @@ const computeEcoScore = (stats) => {
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
- 
+  useFCM(user); // Initialize FCM when the user is available
 
   const [factIndex,   setFactIndex]   = useState(0);
   const [loading,     setLoading]     = useState(true);

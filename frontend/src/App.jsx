@@ -3,7 +3,8 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import useFCM from './hooks/useFCM';
+import useListener from './hooks/useListener';
+import { NotificationProvider } from "./context/NotificationContext";
 
 // ── Pages ────────────────────────────────────────────────────────────
 import LandingPage        from './pages/LandingPage';
@@ -42,7 +43,7 @@ const ProtectedRoute = ({ children }) => {
 
 function AppRoutes() {
   const { user } = useAuth();
-  useFCM(user); // Initialize FCM when the user is available
+  useListener(user); // Initialize listener when the user is available
   return (
     <Routes>
       {/* Landing page — public, shown to unauthenticated visitors at "/" */}
@@ -86,12 +87,14 @@ export default function App() {
   return (
     <ErrorBoundary>
       <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id.apps.googleusercontent.com'}>
+        <NotificationProvider>
         <AuthProvider>
           <BrowserRouter>
             <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
             <AppRoutes />
           </BrowserRouter>
         </AuthProvider>
+        </NotificationProvider>
       </GoogleOAuthProvider>
     </ErrorBoundary>
   );
