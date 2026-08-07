@@ -1,79 +1,55 @@
 import { useEffect } from "react";
-import { getToken, onMessage } from "firebase/messaging";
-import toast from "react-hot-toast";
+import { getToken } from "firebase/messaging";
 import { messaging, VAPID_KEY } from "../lib/firebase";
 import { saveFCMToken } from "../services/notificationService";
 
+
+//setup fcm token and save it to the backend
 export default function useFCM(user) {
+
   useEffect(() => {
-    if (!user) {
-      console.log("User not logged in, skipping FCM setup");
-      return;
-    };
 
+    if (!user) return;
 
+    const setup = async () => {
 
-    const setupFCM = async () => {
-    
       if (Notification.permission === "denied") {
         return;
       }
 
       if (Notification.permission === "default") {
-        const permission = await Notification.requestPermission();
 
-        if (permission !== "granted") {
-          console.log("Setting up FCM", permission);
+        const permission =
+          await Notification.requestPermission();
 
-          return;
-        }
+        if (permission !== "granted") return;
       }
 
+      const registration =
+        await navigator.serviceWorker.ready;
 
+      const token = await getToken(messaging, {
+        vapidKey: VAPID_KEY,
+        serviceWorkerRegistration: registration,
+      });
 
-      try {
+      if (!token) return;
 
-        const registration = await navigator.serviceWorker.ready;
+      if (token !== localStorage.getItem("fcm_token")) {
 
-
-        const token = await getToken(messaging, {
-          vapidKey: VAPID_KEY,
-          serviceWorkerRegistration: registration,
+        await saveFCMToken({
+          token,
+          device: navigator.userAgent,
         });
-      
-        if (!token) return;
 
-        if (token !== localStorage.getItem("fcm_token")) {
-          await saveFCMToken({
-            token,
-            device: navigator.userAgent || "unknown",
-          });
-          localStorage.setItem("fcm_token", token);
-        }
-      } catch (err) {
-        console.error("FCM setup error:", err);
+        localStorage.setItem("fcm_token", token);
+
       }
+
     };
 
-    setupFCM();
+    setup();
 
-
-    const unsubscribe = onMessage(messaging, (payload) => {
-     
-
-      const { title, body } = payload.notification || {};
-
-      if (title) {
-        toast.success(`${title}${body ? `: ${body}` : ""}`);
-
-        // Optional: show browser notification even while tab is focused
-        new Notification(title, {
-          body,
-          icon: "/logo.png",
-        });
-      }
-    });
-
-    return unsubscribe;
   }, [user]);
+
 }
