@@ -11,8 +11,7 @@ export default function useListener(user) {
         if (!user) return;
 
         const unsubscribe = onMessage(messaging, (payload) => {
-            console.log("Foreground notification:", payload);
-
+          
             const { title, body } = payload.notification || {};
 
             if (title) {

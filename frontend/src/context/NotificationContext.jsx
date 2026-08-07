@@ -19,6 +19,34 @@ export const NotificationProvider = ({ children }) => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
     }, [notifications]);
 
+    useEffect(() => {
+        if (!("serviceWorker" in navigator)) return;
+
+        const handleSWMessage = (event) => {
+            if (
+                !event.data ||
+                event.data.type !== "FCM_NOTIFICATION"
+            ) {
+                return;
+            }
+
+            const { payload } = event.data;
+            const { title, body } = (payload && payload.notification) || {};
+
+            if (title) {
+                addNotification({ title, body, data: payload.data });
+            }
+        };
+
+        navigator.serviceWorker.addEventListener("message", handleSWMessage);
+
+        return () =>
+            navigator.serviceWorker.removeEventListener(
+                "message",
+                handleSWMessage
+            );
+    }, []);
+
     /**
      * Add a notification to the top of the list
      */
@@ -35,6 +63,7 @@ export const NotificationProvider = ({ children }) => {
             read: false,
             receivedAt: new Date().toISOString(),
         };
+       
 
         setNotifications(prev => {
 
