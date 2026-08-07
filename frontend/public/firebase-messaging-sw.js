@@ -6,6 +6,8 @@ importScripts(
   "https://www.gstatic.com/firebasejs/11.0.2/firebase-messaging-compat.js"
 );
 
+
+
 firebase.initializeApp({
   apiKey: "__VITE_FIREBASE_API_KEY__",
   authDomain: "__VITE_FIREBASE_AUTH_DOMAIN__",
@@ -17,16 +19,26 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-   
+self.addEventListener("install", () => self.skipWaiting());
 
+messaging.onBackgroundMessage((payload) => {
+    const notification = payload.notification || {};
+  
     self.registration.showNotification(
-        payload.notification.title,
+        notification.title || "Notification",
         {
-            body: payload.notification.body,
+            body: notification.body || "",
             icon: "/logo.png",
         }
     );
+
+    self.clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then((clients) => {
+            clients.forEach((client) =>
+                client.postMessage({ type: "FCM_NOTIFICATION", payload })
+            );
+        });
 });
 
 self.addEventListener("notificationclick", (event) => {

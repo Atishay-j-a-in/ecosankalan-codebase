@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { getWasteStats, getWasteHistory, updateProfile } from '../services/api';
 import BottomNav from '../components/common/BottomNav';
 import '../styles/profile.css';
+import '../styles/NotificationDropdown.css';
 
 const QUIZ_META = {
   'quiz-plastic': { title: 'Plastic Waste',   icon: 'inventory_2',  badge: 'Plastic Expert',     color: '#1b6b3a' },
@@ -19,6 +21,7 @@ function getQuizResults() {
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const quizResults = getQuizResults();
   const completedQuizzes = Object.keys(quizResults).length;
   const totalQuizPoints = Object.values(quizResults).reduce((sum, r) => sum + r.score * 10, 0);
@@ -44,6 +47,27 @@ export default function ProfilePage() {
   const handleLogout = () => {
     logout();
     navigate('/login', { replace: true });
+  };
+
+  const handleNotificationClick = (notification) => {
+    markAsRead(notification.id);
+    switch (notification.data?.type) {
+      case "challenge":
+        navigate(`/challenge/${notification.data.challengeId}`);
+        break;
+      case "quiz":
+        navigate(`/quiz/${notification.data.quizId}`);
+        break;
+      case "reward":
+        navigate("/rewards");
+        break;
+      case "level":
+        navigate("/profile");
+        break;
+      default:
+        break;
+    }
+    setActiveModal(null);
   };
 
   const handleSaveProfile = async () => {
@@ -333,33 +357,28 @@ export default function ProfilePage() {
               <>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Notifications</h3>
-                  <button onClick={() => setActiveModal(null)} style={{ background: 'transparent', border: 'none', color: 'var(--on-surface-variant)' }}><span className="material-symbols-outlined">close</span></button>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '60vh', overflowY: 'auto' }}>
-                  <div style={{ display: 'flex', gap: '1rem', padding: '1rem', background: 'var(--surface-container-low)', borderRadius: '16px' }}>
-                    <span className="material-symbols-outlined" style={{ color: 'var(--primary)' }}>recycling</span>
-                    <div>
-                      <h5 style={{ margin: '0 0 0.25rem 0' }}>Welcome to EcoSankalan!</h5>
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--on-surface-variant)' }}>Start logging your waste to earn EcoPoints and unlock rewards.</p>
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {notifications.length > 0 && (
+                      <button className="mark-all-btn" onClick={markAllAsRead}>Mark all as read</button>
+                    )}
+                    <button onClick={() => setActiveModal(null)} style={{ background: 'transparent', border: 'none', color: 'var(--on-surface-variant)' }}><span className="material-symbols-outlined">close</span></button>
                   </div>
-                  {totalLogs > 0 && (
-                    <div style={{ display: 'flex', gap: '1rem', padding: '1rem', background: 'var(--surface-container-low)', borderRadius: '16px' }}>
-                      <span className="material-symbols-outlined" style={{ color: 'var(--secondary)' }}>celebration</span>
-                      <div>
-                        <h5 style={{ margin: '0 0 0.25rem 0' }}>First Log Milestone</h5>
-                        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--on-surface-variant)' }}>You've successfully completed your first log. Keep it up!</p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '60vh', overflowY: 'auto' }}>
+                  {notifications.length === 0 ? (
+                    <div className="notification-empty">No notifications yet.</div>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`notification-item ${notification.read ? '' : 'notification-unread'}`}
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <div className="notification-title">{notification.title}</div>
+                        <div className="notification-body">{notification.body}</div>
+                        <div className="notification-time">{formatTime(notification.receivedAt)}</div>
                       </div>
-                    </div>
-                  )}
-                  {stats?.categoryBreakdown?.organic >= 50 && (
-                    <div style={{ display: 'flex', gap: '1rem', padding: '1rem', background: 'var(--surface-container-low)', borderRadius: '16px' }}>
-                      <span className="material-symbols-outlined" style={{ color: 'var(--tertiary)' }}>compost</span>
-                      <div>
-                        <h5 style={{ margin: '0 0 0.25rem 0' }}>Soil Master Unlocked</h5>
-                        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--on-surface-variant)' }}>You've composted over 50kg of organic waste.</p>
-                      </div>
-                    </div>
+                    ))
                   )}
                 </div>
               </>
@@ -399,4 +418,12 @@ export default function ProfilePage() {
       <BottomNav />
     </div>
   );
+}
+
+function formatTime(date) {
+  const diff = Math.floor((Date.now() - new Date(date)) / 1000);
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+  return `${Math.floor(diff / 86400)} day ago`;
 }
