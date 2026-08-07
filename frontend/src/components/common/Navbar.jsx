@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import '../../styles/navbar.css';
 import { useNotifications } from "../../context/NotificationContext";
 import NotificationDropdown from "./NotificationDropdown";
-
+import { useState } from "react";
 
 export default function Navbar() {
   const { user } = useAuth();
