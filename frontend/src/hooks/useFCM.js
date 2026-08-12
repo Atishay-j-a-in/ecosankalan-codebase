@@ -28,22 +28,23 @@ export default function useFCM(user) {
       const registration =
         await navigator.serviceWorker.ready;
 
-      const token = await getToken(messaging, {
-        vapidKey: VAPID_KEY,
-        serviceWorkerRegistration: registration,
-      });
-
-      if (!token) return;
-
-      if (token !== localStorage.getItem("fcm_token")) {
-
-        await saveFCMToken({
-          token,
-          device: navigator.userAgent,
+      try {
+        const token = await getToken(messaging, {
+          vapidKey: VAPID_KEY,
+          serviceWorkerRegistration: registration,
         });
 
-        localStorage.setItem("fcm_token", token);
+        if (!token) return;
 
+        if (token !== localStorage.getItem("fcm_token")) {
+          await saveFCMToken({
+            token,
+            device: navigator.userAgent,
+          });
+          localStorage.setItem("fcm_token", token);
+        }
+      } catch (err) {
+        console.warn("FCM Token fetch failed (this is normal if Firebase is not fully configured):", err.message);
       }
 
     };

@@ -4,6 +4,8 @@ import BottomNav from '../components/common/BottomNav';
 import { logWaste, scanWasteImage } from '../services/api';
 import '../styles/waste.css';
 
+import { useStats } from '../context/StatsContext';
+
 const CATEGORIES = [
   { id: 'plastic',  label: 'Plastic',  icon: 'inventory_2',            bg: 'bg-secondary-container', iconColor: 'text-on-secondary-container' },
   { id: 'organic',  label: 'Organic',  icon: 'compost',                bg: 'bg-primary-container',   iconColor: 'text-on-primary-container',  fill: true },
@@ -21,13 +23,14 @@ export default function WasteLogPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  const { refreshAllStats } = useStats();
 
   const [selected,   setSelected]   = useState('organic');
   const [qty,        setQty]        = useState(2.5);
   const [notes,      setNotes]      = useState('');
   const [showModal,  setShowModal]  = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [scanning,   setScanning]   = useState(false);
+  const [scanning,   setScanning]   = useState(null);
   const [error,      setError]      = useState('');
   const [logResult,  setLogResult]  = useState(null); // holds { pointsEarned, co2Saved }
 
@@ -47,6 +50,7 @@ export default function WasteLogPage() {
         logMethod: 'manual',
       });
       setLogResult({ pointsEarned: data.pointsEarned, co2Saved: data.co2Saved });
+      await refreshAllStats(); // Refresh global stats immediately after logging
       setShowModal(true);
     } catch (err) {
       setError(err.message || 'Failed to log waste. Please try again.');
@@ -66,11 +70,11 @@ export default function WasteLogPage() {
     fileInputRef.current?.click();
   };
 
-  const handleFileSelect = async (e) => {
+  const handleFileSelect = async (e, source) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setScanning(true);
+    setScanning(source);
     setError('');
     const formData = new FormData();
     for (const file of files) {
@@ -83,12 +87,13 @@ export default function WasteLogPage() {
       const report = parsed.reports?.[0] || {};
       
       // Calculate preview points/co2 using 0.5kg as a default AI weight
-      const inferredCat = report.wasteCategory?.toLowerCase().replace('-', '') || 'other';
-      const catKey = inferredCat.includes('plastic') ? 'plastic' : 
-                     inferredCat.includes('paper') ? 'paper' : 
-                     inferredCat.includes('metal') ? 'metal' : 
-                     inferredCat.includes('ewaste') || inferredCat.includes('electronic') ? 'e-waste' : 
-                     inferredCat.includes('organic') ? 'organic' : 'other';
+      const textToSearch = ((report.wasteCategory || '') + ' ' + (report.identifiedObject || '') + ' ' + (report.material || '')).toLowerCase();
+      let catKey = 'other';
+      if (textToSearch.includes('plastic') || textToSearch.includes('pet') || textToSearch.includes('polyester')) catKey = 'plastic';
+      else if (textToSearch.includes('paper') || textToSearch.includes('cardboard') || textToSearch.includes('carton') || textToSearch.includes('newspaper')) catKey = 'paper';
+      else if (textToSearch.includes('metal') || textToSearch.includes('can') || textToSearch.includes('aluminum') || textToSearch.includes('steel') || textToSearch.includes('iron') || textToSearch.includes('tin')) catKey = 'metal';
+      else if (textToSearch.includes('organic') || textToSearch.includes('food') || textToSearch.includes('compost') || textToSearch.includes('fruit') || textToSearch.includes('veg') || textToSearch.includes('leaf') || textToSearch.includes('wood') || textToSearch.includes('peel')) catKey = 'organic';
+      else if (textToSearch.includes('e-waste') || textToSearch.includes('electronic') || textToSearch.includes('battery') || textToSearch.includes('cable') || textToSearch.includes('phone') || textToSearch.includes('computer') || textToSearch.includes('wire')) catKey = 'e-waste';
       
       const previewQty = 0.5;
       const previewPts = Math.round((PTS_MAP[catKey] || 2) * previewQty);
@@ -101,18 +106,20 @@ export default function WasteLogPage() {
             label:      report.identifiedObject || 'Unknown Item',
             category:   report.wasteCategory    || 'other',
             material:   report.material         || 'Unknown',
+            binColor:   report.binColor         || 'None',
             confidence: typeof report.confidence === 'number' ? (report.confidence <= 1 ? Math.round(report.confidence * 100) : Math.round(report.confidence)) : 0,
             co2:        previewCo2,
             points:     previewPts,
             steps:      report.beforeThrowing   || [],
             reuseIdeas: report.reuseIdeas       || [],
+            imageUrl:   URL.createObjectURL(files[0]),
           },
         },
       });
     } catch (err) {
       setError(err.message || 'AI scan failed. Please try manual entry.');
     } finally {
-      setScanning(false);
+      setScanning(null);
       // Reset input so same file can be re-selected
       e.target.value = '';
     }
@@ -163,18 +170,22 @@ export default function WasteLogPage() {
                 className="log-ai-btn"
                 style={{ flex: 1, padding: '0.75rem 0.5rem', fontSize: '0.9rem', background: 'var(--surface-variant)', color: 'var(--on-surface-variant)' }}
                 onClick={() => fileInputRef.current?.click()}
-                disabled={scanning}
+                disabled={!!scanning}
               >
-                <span className="material-symbols-outlined">upload_file</span>
+                {scanning === 'upload' ? (
+                  <span className="material-symbols-outlined log-spin">progress_activity</span>
+                ) : (
+                  <span className="material-symbols-outlined">upload_file</span>
+                )}
                 Upload
               </button>
               <button
                 className="log-ai-btn"
                 style={{ flex: 1, padding: '0.75rem 0.5rem', fontSize: '0.9rem' }}
                 onClick={() => cameraInputRef.current?.click()}
-                disabled={scanning}
+                disabled={!!scanning}
               >
-                {scanning ? (
+                {scanning === 'camera' ? (
                   <span className="material-symbols-outlined log-spin">progress_activity</span>
                 ) : (
                   <span className="material-symbols-outlined">photo_camera</span>
@@ -188,7 +199,7 @@ export default function WasteLogPage() {
               type="file"
               accept="image/*"
               style={{ display: 'none' }}
-              onChange={handleFileSelect}
+              onChange={e => handleFileSelect(e, 'upload')}
             />
             {/* Hidden file input for live camera (forces camera on mobile) */}
             <input
@@ -197,7 +208,7 @@ export default function WasteLogPage() {
               accept="image/*"
               capture="environment"
               style={{ display: 'none' }}
-              onChange={handleFileSelect}
+              onChange={e => handleFileSelect(e, 'camera')}
             />
           </div>
         </section>

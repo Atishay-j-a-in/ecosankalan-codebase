@@ -25,6 +25,15 @@ export const AuthProvider = ({ children }) => {
     setUser(userData);
   };
 
+  const updateUser = (userData) => {
+    // Only update if we already have a user
+    if (user) {
+      const updated = { ...user, ...userData };
+      localStorage.setItem('user', JSON.stringify(updated));
+      setUser(updated);
+    }
+  };
+
   const logout = () => {
     const fcmToken = localStorage.getItem('fcm_token');
     if (fcmToken) {
@@ -38,7 +47,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

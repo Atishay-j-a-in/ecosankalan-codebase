@@ -11,11 +11,11 @@ const wasteScanSchema = {
           material: { type: 'string' },
           wasteCategory: {
             type: 'string',
-            enum: ['Recyclable', 'Organic', 'Hazardous', 'E-Waste', 'Mixed', 'Non-Recyclable'],
+            enum: ['Recyclable', 'Organic', 'Hazardous', 'E-Waste', 'Mixed', 'Non-Recyclable', 'Not Waste'],
           },
           binColor: {
             type: 'string',
-            enum: ['Blue', 'Green', 'Red', 'Black'],
+            enum: ['Blue', 'Green', 'Red', 'Black', 'None'],
           },
           recyclable: { type: 'boolean' },
           canBeReused: { type: 'boolean' },

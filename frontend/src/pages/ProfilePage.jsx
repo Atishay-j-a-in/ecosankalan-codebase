@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
-import { getWasteStats, getWasteHistory, updateProfile } from '../services/api';
+import { getWasteStats, getWasteHistory, updateProfile, uploadAvatar, getProfile } from '../services/api';
+import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
 import '../styles/profile.css';
 import '../styles/NotificationDropdown.css';
+
+import { useStats } from '../context/StatsContext';
 
 const QUIZ_META = {
   'quiz-plastic': { title: 'Plastic Waste',   icon: 'inventory_2',  badge: 'Plastic Expert',     color: '#1b6b3a' },
@@ -20,27 +23,31 @@ function getQuizResults() {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const { notifications, markAsRead, markAllAsRead } = useNotifications();
+  const { statsData } = useStats();
+  const stats = statsData.all; // All-time stats
+
   const quizResults = getQuizResults();
   const completedQuizzes = Object.keys(quizResults).length;
   const totalQuizPoints = Object.values(quizResults).reduce((sum, r) => sum + r.score * 10, 0);
 
-  const [stats, setStats] = useState(null);
   const [totalLogs, setTotalLogs] = useState(0);
 
   // Modals state
   const [activeModal, setActiveModal] = useState(null);
   const [editName, setEditName] = useState(user?.name || '');
+  const [editPic, setEditPic] = useState(user?.avatarUrl || '');
+  const [editPicFile, setEditPicFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     Promise.allSettled([
-      getWasteStats('all'),
-      getWasteHistory({ limit: 1 })
-    ]).then(([statsRes, histRes]) => {
-      if (statsRes.status === 'fulfilled') setStats(statsRes.value.data);
+      getWasteHistory({ limit: 1 }),
+      getProfile()
+    ]).then(([histRes, profileRes]) => {
       if (histRes.status === 'fulfilled') setTotalLogs(histRes.value.data.pagination.total);
+      if (profileRes.status === 'fulfilled') updateUser(profileRes.value.data);
     });
   }, []);
 
@@ -74,6 +81,11 @@ export default function ProfilePage() {
     if (!editName.trim()) return;
     setIsSaving(true);
     try {
+      if (editPicFile) {
+        const formData = new FormData();
+        formData.append('avatar', editPicFile);
+        await uploadAvatar(formData);
+      }
       await updateProfile({ name: editName });
       // In a real app, we'd update AuthContext user object here.
       // For now, reload the page to refresh the context.
@@ -132,17 +144,7 @@ export default function ProfilePage() {
   return (
     <div className="profile-root">
 
-      <header className="profile-header">
-        <div className="profile-header-left">
-          <div className="profile-header-avatar">
-            <img src="/logo.png" alt="EcoSankalan Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
-          </div>
-          <h1 className="profile-brand">EcoSankalan</h1>
-        </div>
-        <button className="profile-notif-btn" onClick={() => setActiveModal('notifications')}>
-          <span className="material-symbols-outlined">notifications</span>
-        </button>
-      </header>
+      <Navbar />
 
       <main className="profile-main">
 
@@ -152,7 +154,7 @@ export default function ProfilePage() {
           <div className="profile-hero-body">
             <div className="profile-avatar-wrap">
               <div className="profile-avatar">
-                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCumhJLdM5zItnZGoQ9wC0uGI0AHo-Ho56Zvuk0ZsYMY_ZpAshgZtlV-xwAaiOPIO1cS4eIgYWuRrpt0kBibxsP7oBMt1gmkYA62-H-YlKm3I5BOjnOjOZan5n5qiP1D11LqF3SqRuDZEVqz4WJB-cN4zmIBXZTbIJK_E28F_YA8Lu6UFsEBumE0ktFV0vLzheyCIcvofLPMITIgS9D6FTIy6VydfSY8kFzcS9FIarwx7zv6f1CVrMmn7kviwNEpdaNQxf81xvbsPQS" alt="User Avatar" />
+                <img src={user?.avatarUrl || "https://lh3.googleusercontent.com/aida-public/AB6AXuCumhJLdM5zItnZGoQ9wC0uGI0AHo-Ho56Zvuk0ZsYMY_ZpAshgZtlV-xwAaiOPIO1cS4eIgYWuRrpt0kBibxsP7oBMt1gmkYA62-H-YlKm3I5BOjnOjOZan5n5qiP1D11LqF3SqRuDZEVqz4WJB-cN4zmIBXZTbIJK_E28F_YA8Lu6UFsEBumE0ktFV0vLzheyCIcvofLPMITIgS9D6FTIy6VydfSY8kFzcS9FIarwx7zv6f1CVrMmn7kviwNEpdaNQxf81xvbsPQS"} alt="User Avatar" />
               </div>
               <div className="profile-badge">
                 <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1", fontSize: '0.875rem' }}>workspace_premium</span>
@@ -332,6 +334,28 @@ export default function ProfilePage() {
               <>
                 <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem' }}>Edit Profile</h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="input-group" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <div style={{ width: '5rem', height: '5rem', borderRadius: '50%', overflow: 'hidden', background: 'var(--surface-container-highest)', border: '2px solid var(--primary)' }}>
+                      <img src={editPic || "https://lh3.googleusercontent.com/aida-public/AB6AXuCumhJLdM5zItnZGoQ9wC0uGI0AHo-Ho56Zvuk0ZsYMY_ZpAshgZtlV-xwAaiOPIO1cS4eIgYWuRrpt0kBibxsP7oBMt1gmkYA62-H-YlKm3I5BOjnOjOZan5n5qiP1D11LqF3SqRuDZEVqz4WJB-cN4zmIBXZTbIJK_E28F_YA8Lu6UFsEBumE0ktFV0vLzheyCIcvofLPMITIgS9D6FTIy6VydfSY8kFzcS9FIarwx7zv6f1CVrMmn7kviwNEpdaNQxf81xvbsPQS"} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: '600', cursor: 'pointer', background: 'var(--primary-container)', padding: '0.4rem 0.8rem', borderRadius: '1rem' }}>
+                      Change Picture
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        style={{ display: 'none' }} 
+                        onChange={e => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            setEditPicFile(file);
+                            const reader = new FileReader();
+                            reader.onload = (event) => setEditPic(event.target.result);
+                            reader.readAsDataURL(file);
+                          }
+                        }} 
+                      />
+                    </label>
+                  </div>
                   <div className="input-group">
                     <label style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)', marginBottom: '0.5rem', display: 'block' }}>Full Name</label>
                     <input 

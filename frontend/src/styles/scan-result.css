@@ -43,6 +43,8 @@
 .scan-image-wrap {
   position: relative;
   z-index: 1;
+  width: 100%;
+  aspect-ratio: 1 / 1;
 }
 
 .scan-image-placeholder {

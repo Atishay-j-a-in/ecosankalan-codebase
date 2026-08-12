@@ -4,8 +4,9 @@ import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
 import DashboardSkeleton from '../components/dashboard/DashboardSkeleton';
 import TutorialOverlay from '../components/common/TutorialOverlay';
-import { getWasteStats, getActiveChallenges, getUpcomingEvents, getProfile } from '../services/api';
+import { getWasteStats, getActiveChallenges, getUpcomingEvents, getProfile, getWasteHistory } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useStats } from '../context/StatsContext';
 import useFCM from '../hooks/useFCM';
 import '../styles/dashboard.css';
 
@@ -30,7 +31,7 @@ const computeEcoScore = (stats) => {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   useFCM(user); // Initialize FCM when the user is available
 
   const [factIndex,   setFactIndex]   = useState(0);
@@ -39,15 +40,24 @@ export default function DashboardPage() {
   const carouselRef = useRef(null);
 
   // Real data state
-  const [stats,      setStats]      = useState(null);   // waste stats
+  const { statsData, loading: statsLoading } = useStats();
+  const stats = statsData.week; // waste stats
+  const recentLogs = stats?.recentLogs || []; // recent waste logs
+  
   const [challenges, setChallenges] = useState([]);     // active challenges
   const [events,     setEvents]     = useState([]);     // upcoming events
   const [profile,    setProfile]    = useState(null);   // user profile
 
-  // Daily Check-in Badge — shows ONCE per session via sessionStorage
+  // Daily Check-in Badge — shows ONCE per day via localStorage
   const [showBadge, setShowBadge] = useState(() => {
     try {
-      return !sessionStorage.getItem('badge_shown');
+      const today = new Date().toDateString();
+      const lastShown = localStorage.getItem('daily_badge_shown_date');
+      if (lastShown !== today) {
+        localStorage.setItem('daily_badge_shown_date', today);
+        return true;
+      }
+      return false;
     } catch {
       return false;
     }
@@ -56,17 +66,18 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadAll = async () => {
       try {
-        const [statsRes, challengesRes, eventsRes, profileRes] = await Promise.allSettled([
-          getWasteStats('week'),
+        const [challengesRes, eventsRes, profileRes] = await Promise.allSettled([
           getActiveChallenges(),
           getUpcomingEvents(),
-          getProfile(),
+          getProfile()
         ]);
 
-        if (statsRes.status === 'fulfilled')      setStats(statsRes.value.data);
         if (challengesRes.status === 'fulfilled') setChallenges(challengesRes.value.data);
         if (eventsRes.status === 'fulfilled')     setEvents(eventsRes.value.data);
-        if (profileRes.status === 'fulfilled')    setProfile(profileRes.value.data);
+        if (profileRes.status === 'fulfilled') {
+          setProfile(profileRes.value.data);
+          updateUser(profileRes.value.data);
+        }
       } catch (err) {
         console.error('Dashboard load error:', err);
       } finally {
@@ -80,7 +91,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!showBadge) return;
     const t = setTimeout(() => {
-      sessionStorage.setItem('badge_shown', '1');
+      localStorage.setItem('daily_badge_shown_date', new Date().toDateString());
       setShowBadge(false);
     }, 35000);
     return () => clearTimeout(t);
@@ -115,32 +126,43 @@ export default function DashboardPage() {
 
   // Use active challenges for the carousel; pad with placeholder if empty
   const carouselItems = challenges.length > 0
-    ? challenges.map(ch => ({
-        id: ch._id,
-        tag: 'Weekly Mission',
-        title: ch.title,
-        desc: ch.description || `Complete tasks and earn ${ch.rewardPoints || 100} eco points.`,
-        progress: 0,
-        participants: '—',
-        img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCe9u_wNwdnMkBz4r-hoDrkMFQVYK9MWnMHGKrFvD20h04hA--U81RH6ri40Hq0DYzUiG7zqRkImW-i671FOWnKS-_rb5KCGVO5y-7zaWDyTRinlbImtABYllvqjwtnXgAEcK6ul8-KeYD3-NqfLIkpJm06VphtHq9sD4sX_1eU34m7hdt8WevF47PAA-JNuFbkkeptSI0rVBgngC1lL1ME7k5E6-O7VFCAxT6odIh-b0CFHvVEmceSNVes-uYoUkKye-ZhXKAM_ocR',
-        _raw: ch,
-      }))
+    ? challenges.map((ch, i) => {
+        // Pick a nice nature background based on index
+        const bgImgs = [
+          'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&q=80',
+          'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&q=80',
+          'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=800&q=80',
+          'https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?w=800&q=80'
+        ];
+        return {
+          id: ch._id,
+          tag: 'Weekly Mission',
+          title: ch.title,
+          desc: ch.description || `Complete tasks and earn ${ch.rewardPoints || 100} eco points.`,
+          progress: 0,
+          participants: '—',
+          img: bgImgs[i % bgImgs.length],
+          _raw: ch,
+        };
+      })
     : [
-        { id: 1, tag: 'Weekly Mission', title: 'Zero-Plastic Week', desc: 'Join others in avoiding single-use plastics for 7 days.', progress: 65, participants: '1,240', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCe9u_wNwdnMkBz4r-hoDrkMFQVYK9MWnMHGKrFvD20h04hA--U81RH6ri40Hq0DYzUiG7zqRkImW-i671FOWnKS-_rb5KCGVO5y-7zaWDyTRinlbImtABYllvqjwtnXgAEcK6ul8-KeYD3-NqfLIkpJm06VphtHq9sD4sX_1eU34m7hdt8WevF47PAA-JNuFbkkeptSI0rVBgngC1lL1ME7k5E6-O7VFCAxT6odIh-b0CFHvVEmceSNVes-uYoUkKye-ZhXKAM_ocR' },
-        { id: 2, tag: 'Community Event', title: 'Compost Champion', desc: 'Log organic waste every day for 2 weeks and earn 500 bonus points.', progress: 40, participants: '872', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCe9u_wNwdnMkBz4r-hoDrkMFQVYK9MWnMHGKrFvD20h04hA--U81RH6ri40Hq0DYzUiG7zqRkImW-i671FOWnKS-_rb5KCGVO5y-7zaWDyTRinlbImtABYllvqjwtnXgAEcK6ul8-KeYD3-NqfLIkpJm06VphtHq9sD4sX_1eU34m7hdt8WevF47PAA-JNuFbkkeptSI0rVBgngC1lL1ME7k5E6-O7VFCAxT6odIh-b0CFHvVEmceSNVes-uYoUkKye-ZhXKAM_ocR' },
+        { id: 1, tag: 'Weekly Mission', title: 'Zero-Plastic Week', desc: 'Join others in avoiding single-use plastics for 7 days.', progress: 65, participants: '1,240', img: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&q=80' },
+        { id: 2, tag: 'Community Event', title: 'Compost Champion', desc: 'Log organic waste every day for 2 weeks and earn 500 bonus points.', progress: 40, participants: '872', img: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&q=80' },
       ];
 
-  // Recent activity from waste stats — use weekly trend as activity proxy
-  const activityFeed = stats?.weeklyTrend?.slice(-3).map((day, i) => ({
-    id: i,
-    icon: 'recycling',
-    iconColor: 'var(--primary)',
-    title: `Waste logged — ${day.kg} kg`,
-    meta: `${day.date}`,
-    points: `+${Math.round(day.kg * 5)} pts`,
-    pointsType: 'positive',
-    status: 'Verified',
-  })) || [
+  // Build activity feed from recent logs, with fallback if totally empty
+  const activityFeed = recentLogs.length > 0 
+    ? recentLogs.map((log) => ({
+        id: log._id,
+        icon: 'recycling',
+        iconColor: 'var(--primary)',
+        title: `${log.category} Waste Logged`,
+        meta: `${log.unit === 'g' ? (log.quantity / 1000).toFixed(2) : log.quantity.toFixed(1)} kg • ${new Date(log.date).toLocaleDateString()}`,
+        points: `+${log.pointsEarned} pts`,
+        pointsType: 'positive',
+        status: log.pointsEarned > 0 ? 'Verified' : 'Pending',
+      }))
+    : [
     { id: 1, icon: 'recycling', iconColor: 'var(--primary)', title: 'Plastic Bottles Recycled', meta: 'Central Hub • 2 hours ago', points: '+15 pts', pointsType: 'positive', status: 'Verified' },
     { id: 2, icon: 'compost',   iconColor: 'var(--tertiary)', title: 'Organic Waste Logged', meta: 'Home • Yesterday', points: '+8 pts', pointsType: 'positive', status: 'Pending' },
   ];
@@ -180,71 +202,57 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* ── Hero: Eco Score + Impact Bento */}
-          <section className="hero-grid">
-            <div className="eco-score-card">
-              <div className="eco-score-top-row">
-                <div className="eco-score-left">
-                  <div className="circular-progress-medium" />
-                  <div>
-                    <span className="eco-score-label">ECO SCORE</span>
-                    <span className="eco-score-number">{ecoScore}</span>
-                  </div>
-                </div>
-                <span className="level-badge">LEVEL {Math.floor(ecoScore / 20) + 1}</span>
-              </div>
-              <div className="eco-score-bottom">
-                <h2 className="eco-score-title">Green Warrior</h2>
-                <p className="eco-score-desc">
-                  {co2Saved > 0
-                    ? `Your sustainable habits saved ${co2Saved.toFixed(1)} kg of CO₂ this week!`
-                    : 'Start logging waste to build your eco score and track your impact.'}
-                </p>
-                <button className="insights-btn" onClick={() => navigate('/impact')}>
-                  View Detailed Insights
-                  <span className="material-symbols-outlined">trending_up</span>
-                </button>
-              </div>
+          {/* ── Immersive Nature Hero ── */}
+          <section className="hero-immersive">
+            <div className="hero-immersive-bg">
+              <div className="hero-glass-sun" />
             </div>
+            
+            <div className="hero-immersive-content">
+              <div className="hero-immersive-top">
+                <div className="hi-text-content">
+                  <div className="hi-greeting">Welcome back</div>
+                  <h1 className="hi-title">{userName}</h1>
+                  <p className="hi-subtitle">
+                    {co2Saved > 0 
+                      ? `Your sustainable habits saved ${co2Saved.toFixed(1)} kg of CO₂ this week.` 
+                      : 'Start logging waste to build your eco score and track your impact.'}
+                  </p>
+                  <span className="hi-level-badge">Level {Math.floor(ecoScore / 20) + 1}</span>
+                </div>
+                
+                <div className="hi-score-ring" onClick={() => navigate('/impact')}>
+                  <span className="hi-score-val">{ecoScore}</span>
+                  <span className="hi-score-lbl">ECO SCORE</span>
+                </div>
+              </div>
 
-            <div className="impact-bento">
-              <div className="bento-points">
-                <span className="material-symbols-outlined bento-icon">savings</span>
-                <div className="bento-points-content">
-                  <h3 className="bento-label">Eco Points</h3>
-                  <div className="bento-points-row">
-                    <span className="bento-big-num">{ecoPoints.toLocaleString('en-IN')}</span>
-                    <span className="bento-today">this week</span>
-                  </div>
+              <div className="hero-immersive-stats">
+                <div className="hi-stat-card">
+                  <span className="material-symbols-outlined hi-stat-icon" style={{ fontVariationSettings: "'FILL' 1" }}>savings</span>
+                  <span className="hi-stat-val">{ecoPoints.toLocaleString('en-IN')}</span>
+                  <span className="hi-stat-lbl">Points</span>
                 </div>
-              </div>
-              <div className="bento-fact">
-                <div className="bento-fact-header">
-                  <span className="material-symbols-outlined bento-fact-icon">lightbulb</span>
-                  <h3 className="bento-fact-title">Waste Management Fact</h3>
+                <div className="hi-stat-card">
+                  <span className="material-symbols-outlined hi-stat-icon" style={{ fontVariationSettings: "'FILL' 1" }}>cloud_done</span>
+                  <span className="hi-stat-val">{co2Saved.toFixed(1)} kg</span>
+                  <span className="hi-stat-lbl">CO₂ Saved</span>
                 </div>
-                <p className="bento-fact-text">{WASTE_FACTS[factIndex]}</p>
-                <button className="bento-fact-btn" onClick={nextFact}>
-                  Show Another Fact
-                  <span className="material-symbols-outlined">chevron_right</span>
-                </button>
-              </div>
-              <div className="bento-small">
-                <span className="material-symbols-outlined" style={{ color: 'var(--secondary)' }}>delete_sweep</span>
-                <div className="bento-small-content">
-                  <h3 className="bento-small-label">Waste Logged</h3>
-                  <span className="bento-small-num">{wasteKg.toFixed(1)} kg</span>
-                </div>
-              </div>
-              <div className="bento-small">
-                <span className="material-symbols-outlined" style={{ color: 'var(--tertiary)' }}>cloud_done</span>
-                <div className="bento-small-content">
-                  <h3 className="bento-small-label">CO₂ Saved</h3>
-                  <span className="bento-small-num">{co2Saved.toFixed(1)} kg</span>
+                <div className="hi-stat-card">
+                  <span className="material-symbols-outlined hi-stat-icon" style={{ fontVariationSettings: "'FILL' 1" }}>delete_sweep</span>
+                  <span className="hi-stat-val">{wasteKg.toFixed(1)} kg</span>
+                  <span className="hi-stat-lbl">Logged</span>
                 </div>
               </div>
             </div>
           </section>
+
+          {/* ── Daily Fact Strip ── */}
+          <div className="daily-fact-strip" onClick={nextFact}>
+            <span className="material-symbols-outlined fact-icon">lightbulb</span>
+            <p className="fact-text">{WASTE_FACTS[factIndex]}</p>
+            <span className="material-symbols-outlined fact-arrow">chevron_right</span>
+          </div>
 
           {/* ── Activity Feed + Challenge Carousel */}
           <section className="feed-grid">
@@ -283,10 +291,11 @@ export default function DashboardPage() {
                 {carouselItems.map((ch) => (
                   <div className="challenge-slide" key={ch.id}>
                     <div className="challenge-card">
-                      <img className="challenge-bg" src={ch.img} alt={ch.title} />
-                      <div className="challenge-overlay" />
-                      <div className="challenge-content">
+                      <div className="challenge-image-wrapper">
+                        <img className="challenge-bg" src={ch.img} alt={ch.title} />
                         <span className="challenge-tag">{ch.tag}</span>
+                      </div>
+                      <div className="challenge-content">
                         <h3 className="challenge-title">{ch.title}</h3>
                         <p className="challenge-desc">{ch.desc}</p>
                         <div className="challenge-meta-row">
@@ -296,7 +305,10 @@ export default function DashboardPage() {
                         <div className="challenge-progress-bar">
                           <div className="challenge-progress-fill" style={{ width: `${ch.progress}%` }} />
                         </div>
-                        <button className="challenge-btn" onClick={() => navigate('/weekly-challenges')}>Accept Challenge</button>
+                        <button className="challenge-btn" onClick={() => navigate('/weekly-challenges')}>
+                          Accept Challenge
+                          <span className="material-symbols-outlined">arrow_forward</span>
+                        </button>
                       </div>
                     </div>
                   </div>
