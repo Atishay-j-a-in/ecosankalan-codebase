@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/common/Navbar';
 import { logWaste } from '../services/api';
+import { useStats } from '../context/StatsContext';
 import '../styles/scan-result.css';
 
 // FR-06 Category Disposal Tips from research team
@@ -28,36 +29,31 @@ const DEFAULT_RESULT = {
   ],
 };
 
-// Normalise category key from label if not provided
 function inferCategory(result) {
-  let cat = 'other';
-  if (result.category) {
-    cat = result.category.toLowerCase().replace('-', '');
-  } else {
-    const label = (result.label || '').toLowerCase();
-    if (label.includes('plastic'))  cat = 'plastic';
-    else if (label.includes('paper') || label.includes('cardboard')) cat = 'paper';
-    else if (label.includes('metal') || label.includes('can')) cat = 'metal';
-    else if (label.includes('e-waste') || label.includes('electronic') || label.includes('battery')) cat = 'ewaste';
-    else if (label.includes('organic') || label.includes('food')) cat = 'organic';
-  }
+  const textToSearch = ((result.category || '') + ' ' + (result.label || '') + ' ' + (result.material || '')).toLowerCase();
   
-  // Ensure it matches backend enum
-  if (cat === 'ewaste' || cat === 'e-waste') return 'e-waste';
-  const valid = ['plastic', 'paper', 'metal', 'organic', 'e-waste', 'other'];
-  return valid.includes(cat) ? cat : 'other';
+  if (textToSearch.includes('plastic') || textToSearch.includes('pet') || textToSearch.includes('polyester')) return 'plastic';
+  if (textToSearch.includes('paper') || textToSearch.includes('cardboard') || textToSearch.includes('carton') || textToSearch.includes('newspaper')) return 'paper';
+  if (textToSearch.includes('metal') || textToSearch.includes('can') || textToSearch.includes('aluminum') || textToSearch.includes('steel') || textToSearch.includes('iron') || textToSearch.includes('tin')) return 'metal';
+  if (textToSearch.includes('organic') || textToSearch.includes('food') || textToSearch.includes('compost') || textToSearch.includes('fruit') || textToSearch.includes('veg') || textToSearch.includes('leaf') || textToSearch.includes('wood') || textToSearch.includes('peel')) return 'organic';
+  if (textToSearch.includes('e-waste') || textToSearch.includes('electronic') || textToSearch.includes('battery') || textToSearch.includes('cable') || textToSearch.includes('phone') || textToSearch.includes('computer') || textToSearch.includes('wire')) return 'e-waste';
+  
+  return 'other';
 }
 
 export default function ScanResultPage() {
   const navigate  = useNavigate();
   const location  = useLocation();
+  const { refreshAllStats } = useStats();
   const result    = location.state?.result ?? DEFAULT_RESULT;
 
   const [submitting, setSubmitting] = useState(false);
   const [confirmed,  setConfirmed]  = useState(false);
   const [error,      setError]      = useState('');
 
-  const { label, material, confidence, co2, points, steps, reuseIdeas } = result;
+  const { label, material, confidence, co2, points, steps, reuseIdeas, binColor, category: resultCategory } = result;
+
+  const isInvalid = resultCategory === 'Not Waste' || binColor === 'None';
   const category = inferCategory(result);
   const disposalTip = DISPOSAL_TIPS[category] || DISPOSAL_TIPS.other;
   const [showModal, setShowModal] = useState(false);
@@ -78,6 +74,7 @@ export default function ScanResultPage() {
         description: `AI scan: ${label} (${material})`,
         logMethod: 'ai_scan',
       });
+      await refreshAllStats(); // Update global stats
       setConfirmed(true);
       setShowModal(true); // Show success modal
     } catch (err) {
@@ -96,10 +93,14 @@ export default function ScanResultPage() {
 
         {/* ── Result Image + Confidence ── */}
         <section className="scan-image-wrap">
-          <div className="scan-image-placeholder">
-            <span className="material-symbols-outlined scan-placeholder-icon" style={{ fontVariationSettings: "'FILL' 1" }}>nest_eco_leaf</span>
-            <span className="scan-placeholder-label">Scanned Item</span>
-          </div>
+          {result.imageUrl ? (
+            <img src={result.imageUrl} alt="Scanned item" className="scan-actual-image" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '16px' }} />
+          ) : (
+            <div className="scan-image-placeholder">
+              <span className="material-symbols-outlined scan-placeholder-icon" style={{ fontVariationSettings: "'FILL' 1" }}>recycling</span>
+              <span className="scan-placeholder-label">Scanned Item</span>
+            </div>
+          )}
           <div className="scan-confidence-badge">
             <div className="scan-confidence-ring">
               <svg viewBox="0 0 48 48" className="scan-ring-svg">
@@ -121,7 +122,19 @@ export default function ScanResultPage() {
         {/* ── Category Identity ── */}
         <section className="scan-identity">
           <div className="scan-identity-icon-wrap">
-            <span className="material-symbols-outlined scan-identity-icon" style={{ fontVariationSettings: "'FILL' 1" }}>nest_eco_leaf</span>
+            <span className="material-symbols-outlined scan-identity-icon" style={{ fontVariationSettings: "'FILL' 1", color: binColor !== 'None' ? binColor : 'var(--primary)' }}>
+              {(() => {
+                switch(category) {
+                  case 'plastic': return 'local_drink';
+                  case 'paper': return 'article';
+                  case 'metal': return 'settings';
+                  case 'organic': return 'compost';
+                  case 'e-waste': return 'devices';
+                  case 'other': return 'inventory_2';
+                  default: return 'recycling';
+                }
+              })()}
+            </span>
           </div>
           <h1 className="scan-identity-title">{label}</h1>
           <p className="scan-identity-material">Material: {material}</p>
@@ -132,76 +145,77 @@ export default function ScanResultPage() {
         </section>
 
         {/* ── Bin Drop Animation ── */}
-        <section className="scan-bin-animation-card" style={{ background: 'var(--surface)', margin: '1rem', padding: '1.5rem', borderRadius: '16px', textAlign: 'center', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: 'var(--on-surface)' }}>Smart Disposal Guide</h3>
-          
-          <div style={{ position: 'relative', height: '110px', display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', paddingBottom: '10px' }}>
+        {!isInvalid ? (
+          <section className="scan-bin-animation-card" style={{ background: 'var(--surface)', margin: '1rem', padding: '1.5rem', borderRadius: '16px', textAlign: 'center', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <h3 style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: 'var(--on-surface)' }}>Smart Disposal Guide</h3>
             
-            {/* Falling waste item */}
-            <div style={{
-              position: 'absolute',
-              top: '0',
-              left: ['plastic', 'paper', 'metal'].includes(category) ? '16.6%' : category === 'organic' ? '50%' : '83.3%',
-              transform: 'translateX(-50%)',
-              animation: 'dropWaste 2.5s infinite ease-in-out',
-              zIndex: 10
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '2.5rem', color: 'var(--on-surface-variant)' }}>
-                {category === 'plastic' ? 'water_bottle' : category === 'paper' ? 'description' : category === 'organic' ? 'compost' : category === 'metal' ? 'settings' : 'devices'}
-              </span>
+            <div style={{ position: 'relative', height: '110px', display: 'flex', justifyContent: 'space-around', alignItems: 'flex-end', paddingBottom: '10px' }}>
+              
+              {/* Falling waste item */}
+              <div style={{
+                position: 'absolute',
+                top: '0',
+                left: binColor?.toLowerCase() === 'blue' ? '16.6%' : binColor?.toLowerCase() === 'green' ? '50%' : '83.3%',
+                transform: 'translateX(-50%)',
+                animation: 'dropWaste 2.5s infinite ease-in-out',
+                zIndex: 10
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '2.5rem', color: 'var(--on-surface-variant)' }}>
+                  {category === 'plastic' ? 'water_bottle' : category === 'paper' ? 'description' : category === 'organic' ? 'compost' : category === 'metal' ? 'settings' : 'devices'}
+                </span>
+              </div>
+
+              {/* Colored Bins */}
+              {[
+                { id: 'blue', color: '#2196F3', label: 'Blue Bin (Dry/Recyclables)' },
+                { id: 'green', color: '#4CAF50', label: 'Green Bin (Wet/Organic)' },
+                { id: 'red', color: '#F44336', label: 'Red Bin (Reject/Hazardous)' }
+              ].map(bin => {
+                const targetColor = binColor?.toLowerCase() === 'black' ? 'red' : binColor?.toLowerCase() || 'red'; // map black to red bin visually
+                const isTarget = targetColor === bin.id;
+                
+                return (
+                  <div key={bin.id} style={{ 
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    opacity: isTarget ? 1 : 0.3,
+                    transform: isTarget ? 'scale(1.15)' : 'scale(0.9)',
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}>
+                    <div style={{
+                      width: '48px', height: '60px',
+                      backgroundColor: bin.color,
+                      borderRadius: '4px 4px 12px 12px',
+                      position: 'relative',
+                      border: '3px solid rgba(0,0,0,0.1)'
+                    }}>
+                      {/* Bin lid */}
+                      <div style={{
+                        position: 'absolute', top: '-8px', left: '-6px', right: '-6px', height: '8px',
+                        backgroundColor: bin.color,
+                        borderRadius: '4px',
+                        transformOrigin: 'left bottom',
+                        animation: isTarget ? 'openLid 2.5s infinite ease-in-out' : 'none'
+                      }} />
+                      {/* Bin body lines */}
+                      <div style={{ position: 'absolute', top: '10px', bottom: '10px', left: '12px', width: '4px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px' }} />
+                      <div style={{ position: 'absolute', top: '10px', bottom: '10px', right: '12px', width: '4px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px' }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Colored Bins */}
-            {[
-              { id: 'blue', color: '#2196F3', label: 'Blue Bin (Dry/Recyclables)' },
-              { id: 'green', color: '#4CAF50', label: 'Green Bin (Wet/Organic)' },
-              { id: 'red', color: '#F44336', label: 'Red Bin (Reject/Hazardous)' }
-            ].map(bin => {
-              const targetColor = ['plastic', 'paper', 'metal'].includes(category) ? 'blue' : category === 'organic' ? 'green' : 'red';
-              const isTarget = targetColor === bin.id;
-              
-              return (
-                <div key={bin.id} style={{ 
-                  display: 'flex', flexDirection: 'column', alignItems: 'center',
-                  opacity: isTarget ? 1 : 0.3,
-                  transform: isTarget ? 'scale(1.15)' : 'scale(0.9)',
-                  transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}>
-                  <div style={{
-                    width: '48px', height: '60px',
-                    backgroundColor: bin.color,
-                    borderRadius: '4px 4px 12px 12px',
-                    position: 'relative',
-                    border: '3px solid rgba(0,0,0,0.1)'
-                  }}>
-                    {/* Bin lid */}
-                    <div style={{
-                      position: 'absolute', top: '-8px', left: '-6px', right: '-6px', height: '8px',
-                      backgroundColor: bin.color,
-                      borderRadius: '4px',
-                      transformOrigin: 'left bottom',
-                      animation: isTarget ? 'openLid 2.5s infinite ease-in-out' : 'none'
-                    }} />
-                    {/* Bin body lines */}
-                    <div style={{ position: 'absolute', top: '10px', bottom: '10px', left: '12px', width: '4px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px' }} />
-                    <div style={{ position: 'absolute', top: '10px', bottom: '10px', right: '12px', width: '4px', background: 'rgba(255,255,255,0.3)', borderRadius: '2px' }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{ 
-            marginTop: '1.5rem', 
-            fontWeight: '600', 
-            fontSize: '1.05rem',
-            color: ['plastic', 'paper', 'metal'].includes(category) ? '#1565C0' : category === 'organic' ? '#2E7D32' : '#C62828',
-            background: ['plastic', 'paper', 'metal'].includes(category) ? '#E3F2FD' : category === 'organic' ? '#E8F5E9' : '#FFEBEE',
-            padding: '0.75rem',
-            borderRadius: '8px'
-          }}>
-            Drop this in the {['plastic', 'paper', 'metal'].includes(category) ? 'Blue Bin (Dry Waste)' : category === 'organic' ? 'Green Bin (Wet Waste)' : 'Red Bin (E-Waste / Other)'}
-          </div>
+            <div style={{ 
+              marginTop: '1.5rem', 
+              fontWeight: '600', 
+              fontSize: '1.05rem',
+              color: binColor?.toLowerCase() === 'blue' ? '#1565C0' : binColor?.toLowerCase() === 'green' ? '#2E7D32' : '#C62828',
+              background: binColor?.toLowerCase() === 'blue' ? '#E3F2FD' : binColor?.toLowerCase() === 'green' ? '#E8F5E9' : '#FFEBEE',
+              padding: '0.75rem',
+              borderRadius: '8px'
+            }}>
+              Drop this in the {binColor?.toLowerCase() === 'blue' ? 'Blue Bin (Dry Waste)' : binColor?.toLowerCase() === 'green' ? 'Green Bin (Wet Waste)' : 'Red Bin (E-Waste / Other)'}
+            </div>
 
           <style>{`
             @keyframes dropWaste {
@@ -215,7 +229,14 @@ export default function ScanResultPage() {
               15%, 65% { transform: rotate(-55deg); }
             }
           `}</style>
-        </section>
+          </section>
+        ) : (
+          <section style={{ margin: '1rem', padding: '1.5rem', background: '#FFEBEE', borderRadius: '16px', color: '#C62828', textAlign: 'center', border: '1px solid #FFCDD2' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>block</span>
+            <h3 style={{ marginBottom: '0.5rem' }}>Not a Waste Item</h3>
+            <p style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>Our AI detected something that is not waste (like a human face, pet, or scenery). Please upload a clear photo of the waste item you want to dispose of.</p>
+          </section>
+        )}
 
         {/* ── Disposal Tip (FR-06) ── */}
         <section className="scan-disposal-card">
@@ -261,16 +282,18 @@ export default function ScanResultPage() {
         </section>
 
         {/* ── Impact Preview ── */}
-        <section className="scan-impact-grid">
-          <div className="scan-impact-card">
-            <span className="scan-impact-num primary">{typeof co2 === 'number' ? co2.toFixed(2) : co2}</span>
-            <span className="scan-impact-label">kg CO₂ Saved</span>
-          </div>
-          <div className="scan-impact-card">
-            <span className="scan-impact-num secondary">+{points}</span>
-            <span className="scan-impact-label">Eco Points</span>
-          </div>
-        </section>
+        {!isInvalid && (
+          <section className="scan-impact-grid">
+            <div className="scan-impact-card">
+              <span className="scan-impact-num primary">{typeof co2 === 'number' ? co2.toFixed(2) : co2}</span>
+              <span className="scan-impact-label">kg CO₂ Saved</span>
+            </div>
+            <div className="scan-impact-card">
+              <span className="scan-impact-num secondary">+{points}</span>
+              <span className="scan-impact-label">Eco Points</span>
+            </div>
+          </section>
+        )}
 
       </main>
 
@@ -281,15 +304,21 @@ export default function ScanResultPage() {
         </div>
       )}
       <footer className="scan-result-footer">
-        <button className="scan-confirm-btn" onClick={handleConfirm} disabled={submitting}>
-          {submitting ? (
-            <><span className="material-symbols-outlined log-spin">progress_activity</span> Logging…</>
-          ) : confirmed ? (
-            <><span className="material-symbols-outlined">check_circle</span> Logged! Redirecting…</>
-          ) : (
-            <>Confirm &amp; Log <span className="material-symbols-outlined">check_circle</span></>
-          )}
-        </button>
+        {!isInvalid ? (
+          <button className="scan-confirm-btn" onClick={handleConfirm} disabled={submitting}>
+            {submitting ? (
+              <><span className="material-symbols-outlined log-spin">progress_activity</span> Logging…</>
+            ) : confirmed ? (
+              <><span className="material-symbols-outlined">check_circle</span> Logged! Redirecting…</>
+            ) : (
+              <>Confirm &amp; Log <span className="material-symbols-outlined">check_circle</span></>
+            )}
+          </button>
+        ) : (
+          <button className="scan-confirm-btn" style={{ background: 'var(--surface-container-highest)', color: 'var(--on-surface)' }} onClick={handleEdit}>
+            Take Another Photo
+          </button>
+        )}
         <button className="scan-edit-btn" onClick={handleEdit}>Edit Category</button>
       </footer>
       

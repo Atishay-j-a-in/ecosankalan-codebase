@@ -20,7 +20,7 @@ const {
     <header className="navbar">
       {/* Logo */}
       <div className="navbar-logo" onClick={() => navigate('/dashboard')}>
-        <img src="/logo.png" alt="EcoSankalan Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+        <img src="/logo.png" alt="EcoSankalan Logo" style={{ width: '60px', height: '60px', objectFit: 'contain' }} />
         <span className="navbar-brand">EcoSankalan</span>
       </div>
 

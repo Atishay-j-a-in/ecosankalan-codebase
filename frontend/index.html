@@ -19,40 +19,82 @@
       <!-- Splash screen shown while React boots -->
       <style>
         .splash-screen {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          height: 100vh;
-          background-color: #f8faf8;
+          background: #ffffff;
           font-family: 'Plus Jakarta Sans', sans-serif;
-          color: #005127;
+          z-index: 9999;
+          transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .splash-logo-container {
+          position: relative;
+          width: 96px;
+          height: 96px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 2rem;
+        }
+        .splash-logo-container::before {
+          content: '';
+          position: absolute;
+          inset: -12px;
+          border-radius: 50%;
+          background: conic-gradient(from 0deg, transparent, transparent, transparent, #1b6d24);
+          animation: splash-spin 2s linear infinite;
+        }
+        .splash-logo-container::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: 50%;
+          background: #ffffff;
+          z-index: 1;
         }
         .splash-logo {
-          width: 80px;
-          height: 80px;
-          animation: pulse 2s infinite ease-in-out;
+          position: relative;
+          width: 72px;
+          height: 72px;
+          z-index: 2;
+          object-fit: contain;
+          animation: splash-pulse 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
         }
-        .splash-spinner {
-          margin-top: 2rem;
-          width: 40px;
-          height: 40px;
-          border: 4px solid #a5f4b6;
-          border-top: 4px solid #005127;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
+        .splash-brand {
+          font-size: 1.5rem;
+          font-weight: 800;
+          color: #1a1c19;
+          letter-spacing: -0.02em;
+          margin: 0;
+          background: linear-gradient(135deg, #1b6d24 0%, #005127 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
-        @keyframes pulse {
-          0% { transform: scale(0.95); opacity: 0.8; }
-          50% { transform: scale(1.05); opacity: 1; }
-          100% { transform: scale(0.95); opacity: 0.8; }
+        .splash-text {
+          margin-top: 0.75rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #727970;
+          letter-spacing: 0.02em;
         }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes splash-spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes splash-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(0.95); opacity: 0.9; }
+        }
       </style>
-      <div class="splash-screen">
-        <img src="/logo.png" alt="EcoSankalan" class="splash-logo" />
-        <h2 style="margin-top:1rem;font-weight:700;">EcoSankalan</h2>
-        <div class="splash-spinner"></div>
+      <div class="splash-screen" id="app-splash">
+        <div class="splash-logo-container">
+          <img src="/logo.png" alt="EcoSankalan" class="splash-logo" />
+        </div>
+        <h2 class="splash-brand">EcoSankalan</h2>
+        <p class="splash-text">Preparing your dashboard...</p>
       </div>
     </div>
     <script type="module" src="/src/main.jsx"></script>

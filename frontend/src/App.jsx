@@ -6,6 +6,8 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import useListener from './hooks/useListener';
 import { NotificationProvider } from "./context/NotificationContext";
 
+import { StatsProvider } from './context/StatsContext';
+
 // ── Pages ────────────────────────────────────────────────────────────
 import LandingPage        from './pages/LandingPage';
 import LoginPage           from './pages/LoginPage';
@@ -89,10 +91,12 @@ export default function App() {
       <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || 'dummy-client-id.apps.googleusercontent.com'}>
         <NotificationProvider>
         <AuthProvider>
-          <BrowserRouter>
-            <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
-            <AppRoutes />
-          </BrowserRouter>
+          <StatsProvider>
+            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+              <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+              <AppRoutes />
+            </BrowserRouter>
+          </StatsProvider>
         </AuthProvider>
         </NotificationProvider>
       </GoogleOAuthProvider>

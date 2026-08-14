@@ -50,6 +50,9 @@ export const resetPassword  = (data) => api.post('/api/v1/auth/reset-password', 
 // ════════════════════════════════════════════════════════════════════════════
 export const getProfile    = ()     => api.get('/api/v1/users/profile');
 export const updateProfile = (data) => api.put('/api/v1/users/profile', data);
+export const uploadAvatar  = (formData) => api.put('/api/v1/users/profile/avatar', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+});
 
 // ════════════════════════════════════════════════════════════════════════════
 // WASTE  (FR-03, FR-04, FR-05 + M3 carryover FR stats)

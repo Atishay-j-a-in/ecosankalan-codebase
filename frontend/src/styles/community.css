@@ -345,36 +345,41 @@
   display: flex;
   gap: 0.5rem;
   overflow-x: auto;
-  padding: 0 0.5rem 0.5rem;
-  justify-content: center;
+  padding: 0.5rem 1rem 1rem 1rem;
+  justify-content: flex-start;
   scrollbar-width: none;
 }
-.community-chips::-webkit-scrollbar { display: none; }
+
 
 .community-chip {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 1rem;
-  border: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 0.6rem 1.25rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   white-space: nowrap;
   cursor: pointer;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 600;
   font-family: var(--font-body);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: var(--surface-container-lowest);
+  text-transform: capitalize;
+  letter-spacing: normal;
   color: var(--on-surface);
-  outline: 1px solid rgba(191,201,189,0.15);
-  transition: all 0.15s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.community-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
 }
 .community-chip.active {
   background: var(--primary);
-  color: var(--on-primary);
-  outline: none;
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 4px 16px rgba(27, 109, 36, 0.3);
 }
 .community-chip-icon { font-size: 1.1rem !important; }
 
@@ -387,6 +392,7 @@
   flex-direction: column;
   gap: 0.75rem;
   z-index: 500;
+  align-items: flex-end;
 }
 
 .community-fab-sm {

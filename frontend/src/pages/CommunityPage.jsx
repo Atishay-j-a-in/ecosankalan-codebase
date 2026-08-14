@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
+import Loader from '../components/common/Loader';
 import WasteMarkers from '../components/WasteMarkers';
 import RouteLayer from '../components/RouteLayer';
 import RouteInfo from '../components/RouteInfo';
@@ -203,6 +205,7 @@ export default function CommunityPage() {
     const map = L.map(mapRef.current, {
       center: DEFAULT_CENTER,
       zoom: DEFAULT_ZOOM,
+      maxZoom: 19,
       zoomControl: false,
       attributionControl: true,
     });
@@ -350,17 +353,7 @@ export default function CommunityPage() {
 
   return (
     <div className="community-map-root">
-      <header className="community-glass-header">
-        <div className="community-header-left">
-          <div className="community-avatar">
-            <img src="/logo.png" alt="EcoSankalan Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
-          </div>
-          <h1 className="community-brand">EcoSankalan</h1>
-        </div>
-        <button className="community-notif-btn">
-          <span className="material-symbols-outlined">notifications</span>
-        </button>
-      </header>
+      <Navbar />
 
       <main className="community-map-canvas">
         <div ref={mapRef} className="community-leaflet-map" />
@@ -422,14 +415,14 @@ export default function CommunityPage() {
           </div>
         </div>
 
-        <div className="community-fabs">
+        <div className="community-fabs" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
           {locError && (
-            <div className="waste-loading-badge" style={{ background: '#ffebee', color: '#B71C1C', marginBottom: '0.25rem', pointerEvents: 'auto' }}>
+            <div className="waste-loading-badge" style={{ background: '#ffebee', color: '#B71C1C', whiteSpace: 'nowrap', padding: '0.5rem 1rem', borderRadius: '1rem', display: 'flex', alignItems: 'center', gap: '0.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
               <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>error</span>
               <span>{locError}</span>
             </div>
           )}
-          <button className="community-fab-sm" onClick={handleLocate} disabled={locating}>
+          <button className="community-fab-sm" onClick={handleLocate} disabled={locating} style={{ alignSelf: 'flex-end' }}>
             <span className="material-symbols-outlined">
               {locating ? 'progress_activity' : 'my_location'}
             </span>

@@ -5,6 +5,7 @@ const WasteLog = require('../models/WasteLog');
 const User = require('../models/User');
 const { uploadAiImages } = require('../middleware/upload');
 const { scanWaste } = require('../controllers/aiScanController');
+const { calculateWasteImpact } = require('../utils/aiCalculator');
 
 const router = express.Router();
 
@@ -42,10 +43,9 @@ router.post('/log', async (req, res) => {
     }
 
     const kgQty = unit === 'g' ? qty / 1000 : qty;
-    const pointsPerKg = WasteLog.POINTS_PER_KG[category] || 2;
-    const co2PerKg = WasteLog.CO2_PER_KG[category] || 0.3;
-    const pointsEarned = Math.round(pointsPerKg * kgQty);
-    const co2Saved = round2(co2PerKg * kgQty);
+    
+    // Dynamically calculate points and CO2 saved via AI
+    const { pointsEarned, co2Saved } = await calculateWasteImpact(category, kgQty, description);
 
     const log = await WasteLog.create({
       userId: req.user.userId,
@@ -126,7 +126,7 @@ router.get('/stats', async (req, res) => {
       $cond: [{ $eq: ['$unit', 'g'] }, { $divide: ['$quantity', 1000] }, '$quantity'],
     };
 
-    const [totals, categories, trend] = await Promise.all([
+    const [totals, categories, trend, recentLogs] = await Promise.all([
       WasteLog.aggregate([
         { $match: match },
         {
@@ -147,17 +147,21 @@ router.get('/stats', async (req, res) => {
         {
           $group: {
             _id: {
-              $dateToString: {
-                format: '%Y-%m-%d',
-                date: '$createdAt',
-                timezone: 'Asia/Kolkata',
+              date: {
+                $dateToString: {
+                  format: '%Y-%m-%d',
+                  date: '$createdAt',
+                  timezone: 'Asia/Kolkata',
+                },
               },
+              category: '$category'
             },
             kg: { $sum: kgExpression },
           },
         },
-        { $sort: { _id: 1 } },
+        { $sort: { '_id.date': 1 } },
       ]),
+      WasteLog.find(match).sort({ createdAt: -1 }).limit(3).lean(),
     ]);
 
     const categoryBreakdown = categoryKeys.reduce((acc, key) => {
@@ -174,15 +178,22 @@ router.get('/stats', async (req, res) => {
 
     const total = totals[0] || {};
 
+    const groupedTrend = trend.reduce((acc, item) => {
+      const date = item._id.date;
+      const cat = normaliseCategory(item._id.category);
+      if (!acc[date]) acc[date] = { date, kg: 0, plastic: 0, organic: 0, eWaste: 0, metal: 0, paper: 0, other: 0 };
+      acc[date][cat] = round2((acc[date][cat] || 0) + item.kg);
+      acc[date].kg = round2(acc[date].kg + item.kg);
+      return acc;
+    }, {});
+
     res.status(200).json({
       totalKg: round2(total.totalKg),
       totalCo2Saved: round2(total.totalCo2Saved),
       totalPointsEarned: round2(total.totalPointsEarned),
       categoryBreakdown,
-      weeklyTrend: trend.map((item) => ({
-        date: item._id,
-        kg: round2(item.kg),
-      })),
+      weeklyTrend: Object.values(groupedTrend),
+      recentLogs,
     });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to load waste stats' });

@@ -15,10 +15,17 @@ const serviceAccount = {
     universe_domain: process.env.FIREBASE_UNIVERSE_DOMAIN,
 };
 
-if (!getApps().length) {
-    initializeApp({
-        credential: cert(serviceAccount),
-    });
+let messaging = null;
+
+if (process.env.FIREBASE_PROJECT_ID) {
+    if (!getApps().length) {
+        initializeApp({
+            credential: cert(serviceAccount),
+        });
+    }
+    messaging = getMessaging();
+} else {
+    console.warn("⚠️ Firebase configuration missing (FIREBASE_PROJECT_ID). Push notifications are disabled.");
 }
 
-module.exports = { messaging: getMessaging() };
+module.exports = { messaging };

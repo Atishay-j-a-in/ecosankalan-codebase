@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
+import Loader from '../components/common/Loader';
 import { getActiveChallenges, joinChallenge } from '../services/api';
 import '../styles/weekly-challenges.css';
 
@@ -139,12 +140,7 @@ export default function WeeklyChallengesPage() {
         </div>
 
         {/* Loading */}
-        {loading && (
-          <div className="wc-empty">
-            <span className="material-symbols-outlined wc-empty-icon" style={{ animation: 'spin 1s linear infinite' }}>progress_activity</span>
-            <p>Loading challenges…</p>
-          </div>
-        )}
+        {loading && <Loader text="Loading challenges…" />}
 
         {/* Error */}
         {error && (

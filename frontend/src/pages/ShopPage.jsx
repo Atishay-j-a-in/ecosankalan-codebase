@@ -2,23 +2,34 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
+import Loader from '../components/common/Loader';
 import { getProducts, getMyVouchers, getProfile, getProductRedirectUrl } from '../services/api';
 import '../styles/shop.css';
 
 const PARTNERS = [
-  { name: 'IKEA',      logo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDcojhNb1tYMY1-v6eRbvJILqIwb2Cn-CP3YvtquBvkdKMYgMZJxLMbhX7lbVXLTAdvXYEwulNdmlXohGbWRhKqLHIADNw1hYAHDeAajQV3G_N14RdEzCz-WootC7J1nj6Qn_r19ySTzcaT0zoL5R2vxZKOGqV7N8yiBKorfb29FzygeKCgg8k4jl6JevgXNgnIYlpLOCk9yOl_TNsMKvTOUJojbqRc6g3W__ROI8vZ3K7o3Ui1HtSYwVQ43QZiaVjMW9DUNuMsrbnY' },
-  { name: 'Amazon',    logo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDuNwp13D2GVapRliA0KsLo4B-Os1eyfKpeWvvHYzVH557YZ-v2TjydkdfZ2JjBatHbXU_KZChdz3E4eeW9AMey4ctP0MkWZkIyjol8SKKJVTqO0FvbL75qP5UeTBDvE0SnPdLjPEV710IlanlS1f2E5m2V6xThYaSXdpyZQ9HjFMVYWtzPMnmwxkZ_M0IaOSx7VX5UCF7sxSrAyqOEiu5ZRaEAvff5ukn8rnX1pD4eLyOZCuovbDBFy9IS8Ulyrjmd-GDkbJniRuA5' },
-  { name: 'Decathlon', logo: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCHlbudSqV7DRX5ag4LK5dxcG3oNWtDupwbLbkkPr3vPkSEzHCWeAw1eA3pvTyO_UWwTAug_LQF2RBrih4Qpgd-kxZ5rt7zw3uS8WOaxCQaxaAxv0lVeNdiHxVrjObDaC7u4ZbngKwIJYn75BO1KaLxOmK8WeNTvy9Zc9Hkjm2vI4L4LiRwAd_AwtfTn9k3-CuCj1riMCFA2elGDXu_IZlLjYScaKocck7hNrmt-Igr1x5lJCi1qnjcNJpIcUXhGxY6sVouPvk8v6mJ' },
+  { name: 'IKEA',      logo: 'https://upload.wikimedia.org/wikipedia/commons/c/c5/Ikea_logo.svg' },
+  { name: 'Amazon',    logo: 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg' },
+  { name: 'Decathlon', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Decathlon_Logo.png' },
 ];
 
 // Fallback products if backend returns empty
 const FALLBACK_PRODUCTS = [
   { _id: '1', name: 'Bamboo Travel Set',      partnerName: 'IKEA',      ecoPointsCost: 450, category: 'Home',
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCfiSL1MuBMWm7RNu9yqMvHLSUrHOT66R0_SSVlnkLLLd2JSKF8UW1otoFZc25BjVmQCL-_J9O76BBsDxWb4Uvd3DlmuOvtQCgHewaqEkVDIUsygPNr5ECXRLlKaimaP_thAlLBMx16kVc8Fu7nLEdH7kGKiek8yjirR05KpOEyDqMcxxkNwb9Po0UCUDfIrVyL564RZzABv3KLG8ABmDKNl1tysyrsRgtG8et97Cb2uyv47Pj67IVykleoAjdLFy4pUYJjTG5ef8mo' },
+    imageUrl: 'https://images.unsplash.com/photo-1605001083439-0346c1db032a?q=80&w=600&auto=format&fit=crop' },
   { _id: '2', name: 'Stainless Steel Bottle', partnerName: 'Amazon',    ecoPointsCost: 850, category: 'Reusable',
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCCWfvdvXmQaNQISlOp_Ir-U1vz_esYatMo7Az1oaXv1bDO1CCxeDyQVsS_EPP_EjOEF66mit_Jqb9J4BD-kdTkcGtPXHE2m_tPqcnqCRZr46lg-4lYJRteNM5WPa0nJi9oOr7NplC_iOvUAdR0YG4YJ-vkkMiEBTOItbHVXNNcnNohODBjFhWs1LC5dGib-6ZWuqHt-6aT8kbCgsdi13razrBy6io8o0gDOq5A91wEqPPYJJ8MaI2J38N8WwpHiDism6hsZzggyOM0' },
+    imageUrl: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?q=80&w=600&auto=format&fit=crop' },
   { _id: '3', name: 'Cork Yoga Mat',           partnerName: 'Decathlon', ecoPointsCost: 1200, category: 'Zero Waste',
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBYq_ChRfJ4BcXv-CO0xQaYMolp_gjwK9sO19FXVxW4YAii6t-7ibylveUc6lXgsP9ghtMID_dWkQP2P6gYs4RjERwPqscel7UGYxHKFLKTOj8VI4Ob0G_FxNbcdSo6POaEq65I4qniwsqCpPzpdbts53UeYk74mLIS-FrnBJOjOfN1LEe-tuNlK9Nv7jU1FDvKoAk6sz2SZDEf6Osys0ZyKVX-01DCbqy7XT247AC0TE710dSGMplPkspJ3zdUfLLDouNuT3OSNRRQ' },
+    imageUrl: 'https://images.unsplash.com/photo-1601925260368-ae2f83cf8b7f?q=80&w=600&auto=format&fit=crop' },
+  { _id: '4', name: 'Reusable Cotton Bags',    partnerName: 'IKEA',      ecoPointsCost: 350, category: 'Reusable',
+    imageUrl: 'https://images.unsplash.com/photo-1596558450255-7c0b7be9d56a?q=80&w=600&auto=format&fit=crop' },
+  { _id: '5', name: 'Solar Power Bank',        partnerName: 'Amazon',    ecoPointsCost: 2000, category: 'Electronics',
+    imageUrl: 'https://images.unsplash.com/photo-1582216664998-cb580d5d5b78?q=80&w=600&auto=format&fit=crop' },
+  { _id: '6', name: 'Bamboo Toothbrush Set',   partnerName: 'Decathlon', ecoPointsCost: 250, category: 'Zero Waste',
+    imageUrl: 'https://images.unsplash.com/photo-1505085352341-2cba61a9bc27?q=80&w=600&auto=format&fit=crop' },
+  { _id: '7', name: 'Compost Bin Kitchen',     partnerName: 'IKEA',      ecoPointsCost: 950, category: 'Kitchen',
+    imageUrl: 'https://images.unsplash.com/photo-1585868288258-0524dc0f3689?q=80&w=600&auto=format&fit=crop' },
+  { _id: '8', name: 'Glass Food Containers',   partnerName: 'Amazon',    ecoPointsCost: 700, category: 'Kitchen',
+    imageUrl: 'https://images.unsplash.com/photo-1585250462002-302a6cecd552?q=80&w=600&auto=format&fit=crop' },
 ];
 
 const FILTER_CHIPS = ['All', 'Home', 'Kitchen', 'Reusable', 'Zero Waste', 'Electronics'];
@@ -30,6 +41,8 @@ export default function ShopPage() {
   const [myVouchers,    setMyVouchers]    = useState([]);
   const [userPoints,    setUserPoints]    = useState(0);
   const [activeChip,    setActiveChip]    = useState('All');
+  const [searchQuery,   setSearchQuery]   = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [revealedCodes, setRevealedCodes] = useState({});
   const [loading,       setLoading]       = useState(true);
 
@@ -62,9 +75,9 @@ export default function ShopPage() {
 
   const handleBuyOnPartner = (e, product) => {
     e.stopPropagation();
-    if (product._id === '1') return window.open('https://www.ikea.com/in/en/', '_blank');
-    if (product._id === '2') return window.open('https://www.amazon.in/', '_blank');
-    if (product._id === '3') return window.open('https://www.decathlon.in/', '_blank');
+    if (product._id === '1' || product._id === '4') return window.open('https://www.ikea.com/in/en/', '_blank');
+    if (product._id === '2' || product._id === '5') return window.open('https://www.amazon.in/', '_blank');
+    if (product._id === '3' || product._id === '6') return window.open('https://www.decathlon.in/', '_blank');
     
     if (product._id && !product._id.startsWith('fallback')) {
       // Real product — use backend redirect (appends utm_source=ecosankalan)
@@ -74,9 +87,15 @@ export default function ShopPage() {
     }
   };
 
-  const filtered = activeChip === 'All'
-    ? products
-    : products.filter(p => (p.category || '').toLowerCase() === activeChip.toLowerCase());
+  const filtered = products.filter(p => {
+    const matchesChip = activeChip === 'All' || (p.category || '').toLowerCase() === activeChip.toLowerCase();
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesChip && matchesSearch;
+  });
+
+  const suggestions = searchQuery 
+    ? products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => p.name).slice(0, 5)
+    : [];
 
   const maskCode = (code) => {
     if (!code) return '••••••••';
@@ -94,13 +113,31 @@ export default function ShopPage() {
 
   return (
     <div className="shop-root">
-      <Navbar />
       <main className="shop-main">
 
         {/* Search */}
-        <div className="shop-search-wrap">
+        <div className="shop-search-wrap" style={{ position: 'relative' }}>
           <span className="material-symbols-outlined shop-search-icon">shopping_bag</span>
-          <input className="shop-search-input" placeholder="Search eco products..." type="text" />
+          <input 
+            className="shop-search-input" 
+            placeholder="Search eco products..." 
+            type="text" 
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setShowSuggestions(true);
+            }}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+          />
+          {showSuggestions && searchQuery && suggestions.length > 0 && (
+            <div className="shop-search-suggestions" style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface-container)', borderRadius: '12px', marginTop: '0.5rem', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+              {suggestions.map((sug, i) => (
+                <div key={i} style={{ padding: '0.75rem 1rem', borderBottom: i === suggestions.length - 1 ? 'none' : '1px solid var(--surface-dim)', cursor: 'pointer', fontSize: '0.875rem' }} onMouseDown={(e) => { e.preventDefault(); setSearchQuery(sug); setShowSuggestions(false); }}>
+                  {sug}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Hero */}
@@ -173,6 +210,7 @@ export default function ShopPage() {
             {PARTNERS.map(p => (
               <div className="shop-partner-tile" key={p.name}>
                 <img src={p.logo} alt={p.name} className="shop-partner-logo" />
+                <span className="shop-partner-name-display">{p.name}</span>
               </div>
             ))}
           </div>
@@ -186,9 +224,7 @@ export default function ShopPage() {
           </div>
 
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.6 }}>
-              <span className="material-symbols-outlined" style={{ animation: 'spin 1s linear infinite', fontSize: '2rem' }}>progress_activity</span>
-            </div>
+            <Loader text="Loading catalog..." />
           ) : (
             <div className="shop-grid">
               {filtered.map(product => (

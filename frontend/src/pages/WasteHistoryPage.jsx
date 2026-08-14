@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
+import Loader from '../components/common/Loader';
 import { getWasteHistory } from '../services/api';
 import '../styles/waste-history.css';
 
@@ -120,10 +121,7 @@ export default function WasteHistoryPage() {
         {/* ── History List */}
         <div className="wh-list">
           {loading && logs.length === 0 && (
-            <div className="wh-empty">
-              <span className="material-symbols-outlined wh-empty-icon" style={{ animation: 'spin 1s linear infinite' }}>progress_activity</span>
-              <p>Loading your history…</p>
-            </div>
+            <Loader text="Loading your history…" />
           )}
 
           {!loading && logs.length === 0 && (

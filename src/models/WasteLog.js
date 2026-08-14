@@ -141,25 +141,6 @@ wasteLogSchema.virtual('quantityInKg').get(function () {
   return this.unit === 'g' ? this.quantity / 1000 : this.quantity;
 });
 
-// ── Static: points per kg lookup ─────────────────────────────────────────────
-// Used by the waste controller to calculate pointsEarned before saving
-wasteLogSchema.statics.POINTS_PER_KG = {
-  'e-waste': 10,
-  'metal':   6,
-  'plastic': 5,
-  'paper':   4,
-  'organic': 3,
-  'other':   2,
-};
 
-// CO₂ saved per kg recycled (kg CO₂ equivalent)
-wasteLogSchema.statics.CO2_PER_KG = {
-  'e-waste': 2.0,
-  'metal':   1.8,
-  'plastic': 1.5,
-  'paper':   0.9,
-  'organic': 0.5,
-  'other':   0.3,
-};
 
 module.exports = mongoose.model('WasteLog', wasteLogSchema);

@@ -15,7 +15,7 @@ export default function RegisterPage() {
         {/* ── LEFT: Brand panel ─────────────────────────────── */}
         <section className="brand-panel">
           <div className="brand-logo" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <img src="/logo.png" alt="EcoSankalan Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+            <img src="/logo.png" alt="EcoSankalan Logo" style={{ width: '60px', height: '60px', objectFit: 'contain' }} />
             <span className="brand-name">EcoSankalan</span>
           </div>
           <div className="brand-headline">

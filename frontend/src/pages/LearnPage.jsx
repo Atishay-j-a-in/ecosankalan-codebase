@@ -8,12 +8,15 @@ const FILTER_CATEGORIES = ['All', 'Upcycling', 'Plastic', 'Organic', 'E-waste', 
 
 // Regular video content (non-upcycling)
 const VIDEOS = [
-  { id: 1, title: 'The Ultimate Guide to Sorting Plastic Waste at Home', category: 'Plastic', duration: '12:45',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDt9QqWH98j_ZYCN2mAYbAOUOm-YQSYGeE2FSSv0hTIYbTGBtwoK7tMxDQEoXxjGRFUhtsL6mwVBEqdS6sIYyfqs2DcEE1ispHq2HeZXIAqj81xoTRAQjOyHdJ-Z3OxswvIJA6ljPbuqfpxSyQCh9jDpZvgp8cOUIB57U-afALwfmnse8o_-a4nVpNP3hG5unYrCzy_AfxDxNjKyqqyQ0AYsxaCBHI7ebWYNu9ceR4wT36IybeFpW2JY-YdkmRrhbzUy78zv12UWf7R' },
-  { id: 2, title: 'Composting Basics: Turn Kitchen Scraps into Garden Gold', category: 'Organic', duration: '08:12',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC-j4yM2OAA79D1VX2_-gxAsr2m1SblP3-rZ0jQuC-HZZSQ-CBGYLBaQCO1P6pqWhY1ZeUHopikRym73sSlNjnD74AdMzWOYMFftZBL56Vq5z4Ld_lN90sr4AP_vkMwlxLqvfJLmZ1jKb_mLIPNzNS2XnnkgGDYrittjbXUYhwGC8FGzY1qGu-ziYMrk8z3ug77WanaQrIj2iuQzRIYTm7T43GRfLbsH7vHdfFGBwSMRioiChhpWx3a1VP8ddujl2wZPZgZIFrGSLtV' },
-  { id: 3, title: 'Why You Should Never Throw Electronics in the Trash', category: 'E-waste', duration: '15:30',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD5jJtMEO62XcPT79TkutNy8e3s3yvRbZhXp-6vsDSrLpJrztKVmeNyLc2SX_FZHxUKTb6b99NeLaAiQPA57epdP93tv3X9oQ4WRVvkuEAUgTT2KXHDkmKr1YgxlAWiYHQx4D9jEXyvYGvlXuplY3D5kZYp78n59YZjva4mKkWlvp53BH6bhT__VNmpqZxCeo7n495mdMC27fe2Wu0ACtEWw0obhjMOFjrE25tCRoOl3gGgRKoTARug8NxwfyCKinv3Rrq-TSLO2j4K' },
+  { id: 1, title: 'The Ultimate Guide to Sorting Plastic Waste at Home', category: 'Plastic', duration: '0:54',
+    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDt9QqWH98j_ZYCN2mAYbAOUOm-YQSYGeE2FSSv0hTIYbTGBtwoK7tMxDQEoXxjGRFUhtsL6mwVBEqdS6sIYyfqs2DcEE1ispHq2HeZXIAqj81xoTRAQjOyHdJ-Z3OxswvIJA6ljPbuqfpxSyQCh9jDpZvgp8cOUIB57U-afALwfmnse8o_-a4nVpNP3hG5unYrCzy_AfxDxNjKyqqyQ0AYsxaCBHI7ebWYNu9ceR4wT36IybeFpW2JY-YdkmRrhbzUy78zv12UWf7R',
+    url: 'https://www.youtube.com/watch?v=QUZjNGflbNY' },
+  { id: 2, title: 'Composting Basics: Turn Kitchen Scraps into Garden Gold', category: 'Organic', duration: '10:01',
+    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC-j4yM2OAA79D1VX2_-gxAsr2m1SblP3-rZ0jQuC-HZZSQ-CBGYLBaQCO1P6pqWhY1ZeUHopikRym73sSlNjnD74AdMzWOYMFftZBL56Vq5z4Ld_lN90sr4AP_vkMwlxLqvfJLmZ1jKb_mLIPNzNS2XnnkgGDYrittjbXUYhwGC8FGzY1qGu-ziYMrk8z3ug77WanaQrIj2iuQzRIYTm7T43GRfLbsH7vHdfFGBwSMRioiChhpWx3a1VP8ddujl2wZPZgZIFrGSLtV',
+    url: 'https://www.youtube.com/watch?v=zzYK_XhwFmc' },
+  { id: 3, title: 'Why You Should Never Throw Electronics in the Trash', category: 'E-waste', duration: '01:52',
+    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD5jJtMEO62XcPT79TkutNy8e3s3yvRbZhXp-6vsDSrLpJrztKVmeNyLc2SX_FZHxUKTb6b99NeLaAiQPA57epdP93tv3X9oQ4WRVvkuEAUgTT2KXHDkmKr1YgxlAWiYHQx4D9jEXyvYGvlXuplY3D5kZYp78n59YZjva4mKkWlvp53BH6bhT__VNmpqZxCeo7n495mdMC27fe2Wu0ACtEWw0obhjMOFjrE25tCRoOl3gGgRKoTARug8NxwfyCKinv3Rrq-TSLO2j4K',
+    url: 'https://www.youtube.com/watch?v=6ETBBHBbnlQ' },
 ];
 
 const UPCYCLING_FEATURED = {
@@ -29,41 +32,25 @@ const UPCYCLING_TUTORIALS = [
     thumb: 'https://images.pexels.com/photos/4505161/pexels-photo-4505161.jpeg',
     url: 'https://www.wikihow.com/Make-a-Plastic-Bottle-Planter' },
   { id: 'u2', title: 'Reuse Plastic Bottles as Bird Feeders', difficulty: 'Easy', diffClass: 'easy',
-    time: '15 mins', category: 'Plastic', type: 'YouTube',
+    time: '07:13', category: 'Plastic', type: 'YouTube',
     thumb: 'https://images.pexels.com/photos/1463530/pexels-photo-1463530.jpeg',
-    url: 'https://www.youtube.com/watch?v=1D3R6Kx7M7I' },
+    url: 'https://www.youtube.com/watch?v=Xj3KGGCJFu0' },
   { id: 'u3', title: 'Plastic Bottle Desk Organizer', difficulty: 'Medium', diffClass: 'hard',
     time: '25 mins', category: 'Plastic', type: 'Blog',
     thumb: 'https://images.pexels.com/photos/4792730/pexels-photo-4792730.jpeg',
     url: 'https://www.instructables.com/Plastic-Bottle-Desk-Organizer/' },
   { id: 'u4', title: 'Handmade Newspaper Gift Bag', difficulty: 'Easy', diffClass: 'easy',
-    time: '20 mins', category: 'Paper', type: 'YouTube',
+    time: '05:20', category: 'Paper', type: 'YouTube',
     thumb: 'https://images.pexels.com/photos/4498362/pexels-photo-4498362.jpeg',
-    url: 'https://www.youtube.com/watch?v=SPc8xHq6v5k' },
+    url: 'https://www.youtube.com/watch?v=ZkxwVjKRcOA' },
   { id: 'u5', title: 'DIY Cardboard Desk Organizer', difficulty: 'Medium', diffClass: 'hard',
     time: '30 mins', category: 'Paper', type: 'Blog',
     thumb: 'https://images.pexels.com/photos/4145190/pexels-photo-4145190.jpeg',
     url: 'https://www.instructables.com/Cardboard-Desk-Organizer/' },
   { id: 'u6', title: 'Decorative Wall Art from Waste Paper', difficulty: 'Medium', diffClass: 'hard',
-    time: '40 mins', category: 'Paper', type: 'YouTube',
+    time: '24:14', category: 'Paper', type: 'YouTube',
     thumb: 'https://images.pexels.com/photos/1884584/pexels-photo-1884584.jpeg',
-    url: 'https://www.youtube.com/watch?v=Kj8R9gN2x6I' },
-  { id: 'u7', title: 'Upcycle Tin Cans into Pen Holders', difficulty: 'Easy', diffClass: 'easy',
-    time: '15 mins', category: 'Metal', type: 'Blog',
-    thumb: 'https://images.pexels.com/photos/4110251/pexels-photo-4110251.jpeg',
-    url: 'https://www.wikihow.com/Decorate-a-Tin-Can' },
-  { id: 'u8', title: 'Creative Keyboard Key Craft Ideas', difficulty: 'Medium', diffClass: 'hard',
-    time: '35 mins', category: 'E-waste', type: 'Blog',
-    thumb: 'https://images.pexels.com/photos/1714208/pexels-photo-1714208.jpeg',
-    url: 'https://www.instructables.com/Keyboard-Key-Art/' },
-  { id: 'u9', title: 'DIY Decorative Mosaic from Old CDs', difficulty: 'Medium', diffClass: 'hard',
-    time: '45 mins', category: 'E-waste', type: 'YouTube',
-    thumb: 'https://images.pexels.com/photos/3945683/pexels-photo-3945683.jpeg',
-    url: 'https://www.youtube.com/watch?v=4jvT2m9M8xA' },
-  { id: 'u10', title: 'Home Composting for Food Waste', difficulty: 'Easy', diffClass: 'easy',
-    time: '10 mins', category: 'Organic', type: 'Blog',
-    thumb: 'https://images.pexels.com/photos/4503268/pexels-photo-4503268.jpeg',
-    url: 'https://www.wikihow.com/Make-Compost' },
+    url: 'https://www.youtube.com/watch?v=sAVpVm4h3Fc' },
 ];
 
 export default function LearnPage() {
@@ -216,7 +203,12 @@ export default function LearnPage() {
         {!isUpcycling && filteredVideos.length > 0 && (
           <div className="learn-video-list">
             {filteredVideos.map(video => (
-              <div className="learn-video-card" key={video.id}>
+              <div 
+                className="learn-video-card" 
+                key={video.id}
+                onClick={() => video.url && window.open(video.url, '_blank', 'noopener,noreferrer')}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="learn-video-thumb">
                   <img src={video.img} alt={video.title} />
                   <div className="learn-video-overlay">

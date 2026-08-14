@@ -355,16 +355,18 @@
 
 .shop-partner-tile {
     min-width: 7.5rem;
-    height: 3.75rem;
+    height: 5rem;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     background: var(--surface-container-low);
     border-radius: 0.75rem;
-    padding: 1rem;
+    padding: 0.75rem;
     box-shadow: 0 4px 20px rgba(27, 107, 58, 0.05);
     flex-shrink: 0;
     transition: transform 0.15s;
+    gap: 0.25rem;
 }
 
 .shop-partner-tile:active {
@@ -372,8 +374,15 @@
 }
 
 .shop-partner-logo {
-    height: 1.5rem;
+    height: 1.75rem;
     object-fit: contain;
+}
+
+.shop-partner-name-display {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--on-surface-variant);
+    font-family: var(--font-body);
 }
 
 /* Product Grid */

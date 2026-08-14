@@ -181,23 +181,25 @@ export default function QuizPage() {
 
   const fillPct = Math.round(((currentQ + (revealed ? 1 : 0)) / TOTAL) * 100);
 
-  const handleSelect = (optId) => { if (!revealed) setSelected(optId); };
+  const handleSelect = (optId) => { 
+    if (!revealed) {
+      setSelected(optId);
+      setRevealed(true);
+      if (optId === question.correctId) {
+        setScore(s => s + 1);
+      }
+    }
+  };
 
   const handleContinue = () => {
-    if (!revealed) {
-      setRevealed(true);
-      if (selected === question.correctId) setScore(s => s + 1);
-      return;
-    }
-    const newScore = revealed && selected === question.correctId ? score + (score === currentQ ? 0 : 0) : score;
-    const finalScore = selected === question.correctId ? score + 1 : score;
+    // Only proceed to next question
     const nextQ = currentQ + 1;
     if (nextQ >= TOTAL) {
       const mins = Math.floor(elapsed / 60);
       const secs = elapsed % 60;
-      saveQuizResult(quiz.id, finalScore, TOTAL);
+      saveQuizResult(quiz.id, score, TOTAL);
       navigate('/quiz-result', {
-        state: { score: finalScore, total: TOTAL, time: `${mins}:${secs.toString().padStart(2, '0')}`, points: 50, quizTitle: quiz.title, badge: quiz.badge },
+        state: { score: score, total: TOTAL, time: `${mins}:${secs.toString().padStart(2, '0')}`, points: 50, quizTitle: quiz.title, badge: quiz.badge },
         replace: true,
       });
       return;
@@ -230,7 +232,7 @@ export default function QuizPage() {
   };
 
   const continueLabel = !selected ? 'Select an answer'
-    : !revealed ? 'Confirm Answer'
+    : !revealed ? 'Check Answer'
     : currentQ + 1 >= TOTAL ? 'See Results' : 'Next Question';
 
   // ── Quiz selection screen ──
