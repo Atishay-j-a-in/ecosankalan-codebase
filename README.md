@@ -217,21 +217,19 @@ Administrative capabilities include
 
 > Replace these placeholders with screenshots after deployment.
 
-| Landing Page | Dashboard |
-|--------------|-----------|
-| <img width="1600" height="891" alt="image" src="https://github.com/user-attachments/assets/67490762-f77e-4a40-9d32-2653b07864a9" />
+| Landing Page |
+| <img width="1600" height="891" alt="image" src="https://github.com/user-attachments/assets/67490762-f77e-4a40-9d32-2653b07864a9" />|
+| Dashboard |
  |<img width="1231" height="889" alt="image" src="https://github.com/user-attachments/assets/24bc4293-235a-4d72-b656-f4d27c1d302d" />
  |
 
-| AI Scanner | Bin Locator |
-|------------|-------------|
-| <img width="748" height="828" alt="image" src="https://github.com/user-attachments/assets/116f4256-7338-4698-9477-afde81287e8d" />
- | <img width="1600" height="770" alt="image" src="https://github.com/user-attachments/assets/d210995d-db6c-4dea-984b-6a35e1e4ca4b" />
- |
+| AI Scanner |
+| <img width="748" height="828" alt="image" src="https://github.com/user-attachments/assets/116f4256-7338-4698-9477-afde81287e8d" />|
+| Bin Locator |
+| <img width="1600" height="770" alt="image" src="https://github.com/user-attachments/assets/d210995d-db6c-4dea-984b-6a35e1e4ca4b" />|
 
 | Rewards |
-|----------|
-| <img width="786" height="493" alt="image" src="https://github.com/user-attachments/assets/eb0cd3b5-5d27-46dc-8f09-a58984699b74" />
+| <img width="786" height="493" alt="image" src="https://github.com/user-attachments/assets/eb0cd3b5-5d27-46dc-8f09-a58984699b74" />|
 
 ---
 
