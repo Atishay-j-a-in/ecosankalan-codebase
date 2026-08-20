@@ -1,4 +1,4 @@
-<div align="center">
+<img width="1600" height="891" alt="image" src="https://github.com/user-attachments/assets/a6217b8e-25ee-479b-8277-3bc7ee90d746" /><div align="center">
 
 # 🌿 EcoSankalan
 
@@ -220,15 +220,19 @@ Administrative capabilities include
 
 | Landing Page | Dashboard |
 |--------------|-----------|
-| ![](images/landing.png) | ![](images/dashboard.png) |
+| <img width="1600" height="891" alt="image" src="https://github.com/user-attachments/assets/67490762-f77e-4a40-9d32-2653b07864a9" />
+ |<img width="1231" height="889" alt="image" src="https://github.com/user-attachments/assets/24bc4293-235a-4d72-b656-f4d27c1d302d" />
+ |
 
 | AI Scanner | Bin Locator |
 |------------|-------------|
-| ![](images/scanner.png) | ![](images/bin.png) |
+| <img width="748" height="828" alt="image" src="https://github.com/user-attachments/assets/116f4256-7338-4698-9477-afde81287e8d" />
+ | <img width="1600" height="770" alt="image" src="https://github.com/user-attachments/assets/d210995d-db6c-4dea-984b-6a35e1e4ca4b" />
+ |
 
-| Rewards | Admin Dashboard |
-|----------|-----------------|
-| ![](images/rewards.png) | ![](images/admin.png) |
+| Rewards |
+|----------|
+| <img width="786" height="493" alt="image" src="https://github.com/user-attachments/assets/eb0cd3b5-5d27-46dc-8f09-a58984699b74" />
 
 ---
 
