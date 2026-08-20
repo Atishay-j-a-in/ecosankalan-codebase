@@ -1,4 +1,3 @@
-<img width="1600" height="891" alt="image" src="https://github.com/user-attachments/assets/a6217b8e-25ee-479b-8277-3bc7ee90d746" /><div align="center">
 
 # 🌿 EcoSankalan
 
@@ -871,38 +870,32 @@ We also acknowledge the guidance and support provided by **Netaji Subhas Univers
 <table>
 <tr>
 <td align="center">
-<img src="https://avatars.githubusercontent.com/u/1?v=4" width="80px"/><br>
 <b>Vipin Gupta</b><br>
 Full Stack Developer
 </td>
 
 <td align="center">
-<img src="https://avatars.githubusercontent.com/u/2?v=4" width="80px"/><br>
 <b>Krishna</b><br>
 Frontend Lead
 </td>
 
 <td align="center">
-<img src="https://avatars.githubusercontent.com/u/3?v=4" width="80px"/><br>
 <b>Atishay Jain</b><br>
 Full Stack Developer
 </td>
 
 <td align="center">
-<img src="https://avatars.githubusercontent.com/u/4?v=4" width="80px"/><br>
 <b>Bhagya Ranjan Singh</b><br>
 Frontend & Research
 </td>
 
 <td align="center">
-<img src="https://avatars.githubusercontent.com/u/5?v=4" width="80px"/><br>
 <b>Ayush Jha</b><br>
 Full Stack Developer
 </td>
 </tr>
 </table>
 
-> Replace the placeholder avatar URLs with your GitHub profile images.
 
 ---
 
