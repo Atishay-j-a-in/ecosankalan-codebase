@@ -8,7 +8,7 @@ import { messaging } from "../lib/firebase";
 export default function useListener(user) {
     const { addNotification } = useNotifications();
     useEffect(() => {
-        if (!user) return;
+        if (!user || !messaging) return;
 
         const unsubscribe = onMessage(messaging, (payload) => {
           

@@ -10,7 +10,26 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+// Push notifications are optional. If Firebase isn't configured (e.g. local
+// dev without VITE_FIREBASE_*), export null instead of throwing at import
+// time — an uncaught throw here would unmount the entire React tree and
+// leave the splash screen stuck forever.
+export const isFirebaseConfigured = Boolean(
+  firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId
+);
 
-export const messaging = getMessaging(app);
+let messaging = null;
+if (isFirebaseConfigured) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    messaging = getMessaging(app);
+  } catch (err) {
+    console.warn('[firebase] init failed, push disabled:', err?.message || err);
+    messaging = null;
+  }
+} else if (import.meta.env.DEV) {
+  console.warn('[firebase] VITE_FIREBASE_* not set, push notifications disabled.');
+}
+
+export { messaging };
 export const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;

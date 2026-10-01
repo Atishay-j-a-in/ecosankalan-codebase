@@ -11,6 +11,8 @@ export default function useFCM(user) {
 
     if (!user) return;
 
+    if (!messaging) return; // push not configured — skip silently
+
     const setup = async () => {
 
       if (Notification.permission === "denied") {
