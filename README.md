@@ -905,11 +905,10 @@ Full Stack Developer
 
 For suggestions, collaborations, or feedback:
 
-📧 **Email:** your-email@example.com
+📧 **Email:** ecosankalan@gmail.com
 
-🌐 **Project:** https://eco-sankalan.vercel.app
-
-📂 **Repository:** https://github.com/yourusername/ecosankalan
+🌐 **Project:** https://ecosankalan.in
+📂 **Repository:**(https://github.com/ecosankalan/ecosankalan-codebase)
 
 ---
 
