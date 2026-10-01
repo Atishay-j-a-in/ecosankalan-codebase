@@ -36,8 +36,9 @@ router.get('/', async (req, res) => {
     if (n <= s || e <= w) {
       return res.status(400).json({ success: false, message: 'Invalid bounding box: require north>south and east>west' });
     }
-    // Prevent full-planet scans.
-    if (n - s > 10 || e - w > 10) {
+    // Prevent full-planet scans (country-level views like India ~30° are fine;
+    // results are still capped at 500 below).
+    if (n - s > 45 || e - w > 45) {
       return res.status(400).json({ success: false, message: 'Bounding box too large. Zoom in.' });
     }
 
