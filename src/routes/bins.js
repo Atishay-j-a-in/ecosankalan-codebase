@@ -24,21 +24,29 @@ router.get('/', async (req, res) => {
   try {
     const lat = toNumber(req.query.lat);
     const lng = toNumber(req.query.lng);
-    const radius = toNumber(req.query.radius) || 5000;
+    const rawRadius = toNumber(req.query.radius) ?? 5000;
+    const radius = Math.min(20000, Math.max(100, rawRadius));
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
 
     if (lat === null || lng === null) {
       return res.status(400).json({ success: false, message: 'lat and lng query params are required' });
     }
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ success: false, message: 'lat must be -90..90 and lng -180..180' });
+    }
 
     const userPoint = [lng, lat];
-    const bins = await Bin.find({
+    const query = Bin.find({
       location: {
         $near: {
           $geometry: { type: 'Point', coordinates: userPoint },
           $maxDistance: radius,
         },
       },
-    }).lean();
+    });
+    // Support mocked models in tests (plain arrays) as well as real Mongoose queries.
+    const limited = query && typeof query.limit === 'function' ? query.limit(limit) : query;
+    const bins = limited && typeof limited.lean === 'function' ? await limited.lean() : await limited;
 
     res.status(200).json(bins.map((bin) => ({
       ...bin,
@@ -57,13 +65,21 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
     if (!name || !address || !location?.coordinates || !Array.isArray(types) || types.length === 0) {
       return res.status(400).json({ success: false, message: 'name, address, location.coordinates and types are required' });
     }
+    const coords = location.coordinates.map(Number);
+    if (
+      coords.length !== 2 ||
+      !Number.isFinite(coords[0]) || !Number.isFinite(coords[1]) ||
+      coords[0] < -180 || coords[0] > 180 || coords[1] < -90 || coords[1] > 90
+    ) {
+      return res.status(400).json({ success: false, message: 'location.coordinates must be [lng (-180..180), lat (-90..90)]' });
+    }
 
     const bin = await Bin.create({
       name,
       address,
       location: {
         type: 'Point',
-        coordinates: location.coordinates,
+        coordinates: coords,
       },
       types,
       capacityStatus,
@@ -76,12 +92,40 @@ router.post('/', protect, authorize('admin'), async (req, res) => {
   }
 });
 
-router.put('/:id', protect, authorize('admin'), (req, res) => {
-  res.status(501).json({ success: false, message: 'PUT /bins/:id not implemented.' });
+router.put('/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const allowed = ['name', 'address', 'types', 'capacityStatus'];
+    const updates = {};
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+    if (req.body.location?.coordinates !== undefined) {
+      const coords = req.body.location.coordinates.map(Number);
+      if (
+        coords.length !== 2 ||
+        !Number.isFinite(coords[0]) || !Number.isFinite(coords[1]) ||
+        coords[0] < -180 || coords[0] > 180 || coords[1] < -90 || coords[1] > 90
+      ) {
+        return res.status(400).json({ success: false, message: 'location.coordinates must be [lng (-180..180), lat (-90..90)]' });
+      }
+      updates.location = { type: 'Point', coordinates: coords };
+    }
+    const bin = await Bin.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true, runValidators: true });
+    if (!bin) return res.status(404).json({ success: false, message: 'Bin not found' });
+    res.status(200).json(bin);
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message || 'Failed to update bin' });
+  }
 });
 
-router.delete('/:id', protect, authorize('admin'), (req, res) => {
-  res.status(501).json({ success: false, message: 'DELETE /bins/:id not implemented.' });
+router.delete('/:id', protect, authorize('admin'), async (req, res) => {
+  try {
+    const bin = await Bin.findByIdAndDelete(req.params.id);
+    if (!bin) return res.status(404).json({ success: false, message: 'Bin not found' });
+    res.status(200).json({ success: true, message: 'Bin deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to delete bin' });
+  }
 });
 
 module.exports = router;

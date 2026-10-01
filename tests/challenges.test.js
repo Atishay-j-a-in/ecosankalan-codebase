@@ -295,6 +295,12 @@ describe('Challenges API — admin & user', () => {
       };
       Challenge.findOne.mockResolvedValue(baseChallenge());
       ChallengeProgress.findOne.mockResolvedValue(progressDoc);
+      ChallengeProgress.findOneAndUpdate.mockResolvedValue({
+        ...progressDoc,
+        totalPoints: 90,
+        allCompleted: false,
+        save: jest.fn().mockResolvedValue(true),
+      });
 
       const res = await request(app)
         .post(`/api/v1/challenges/${challengeId}/submit`)

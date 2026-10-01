@@ -1,7 +1,7 @@
 const multer = require('multer');
 const { MAX_AI_FILES, MAX_AI_FILE_SIZE } = require('../config/aiConfig');
 
-const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -11,7 +11,7 @@ const upload = multer({
   },
   fileFilter(req, file, cb) {
     if (!allowedMimeTypes.has(file.mimetype)) {
-      const error = new Error('Only JPG, PNG, WEBP, and non-animated GIF images are allowed.');
+      const error = new Error('Only JPG, PNG and WEBP images are allowed.');
       error.statusCode = 415;
       return cb(error);
     }

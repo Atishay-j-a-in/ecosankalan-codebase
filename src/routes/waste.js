@@ -26,7 +26,7 @@ router.use(protect);
 // POST /waste/log — manual waste logging
 router.post('/log', async (req, res) => {
   try {
-    const { category, quantity, unit = 'kg', description, logMethod = 'manual', aiScan } = req.body;
+    const { category, quantity, unit = 'kg', description, logMethod = 'manual', aiScan, isHazardous, hazardType, safetyAck } = req.body;
 
     if (!category || !quantity) {
       return res.status(400).json({ success: false, message: 'category and quantity are required' });
@@ -41,6 +41,30 @@ router.post('/log', async (req, res) => {
     if (!Number.isFinite(qty) || qty <= 0) {
       return res.status(400).json({ success: false, message: 'quantity must be a positive number' });
     }
+    if (qty > 1000) {
+      return res.status(400).json({ success: false, message: 'quantity exceeds 1000kg per entry. Split into multiple logs.' });
+    }
+    if (!['kg', 'g'].includes(unit)) {
+      return res.status(400).json({ success: false, message: 'unit must be kg or g' });
+    }
+    if (description && description.length > 200) {
+      return res.status(400).json({ success: false, message: 'description cannot exceed 200 characters' });
+    }
+
+    // Hazardous waste must be flagged with an explicit safety acknowledgement.
+    const hazardous = isHazardous === true || hazardType != null;
+    if (hazardous) {
+      const validHazards = ['sanitary', 'biomedical', 'e-waste-unsafe', 'chemical', 'sharp', 'other-hazard'];
+      if (!hazardType || !validHazards.includes(hazardType)) {
+        return res.status(400).json({ success: false, message: `hazardType must be one of: ${validHazards.join(', ')}` });
+      }
+      if (safetyAck !== true) {
+        return res.status(400).json({
+          success: false,
+          message: 'Hazardous waste requires safetyAck: wear gloves/mask, do not burn or mix with household waste.',
+        });
+      }
+    }
 
     const kgQty = unit === 'g' ? qty / 1000 : qty;
     
@@ -52,17 +76,21 @@ router.post('/log', async (req, res) => {
       category,
       quantity: qty,
       unit,
-      description,
-      logMethod,
+      description: description ? String(description).slice(0, 200) : undefined,
+      logMethod: logMethod === 'ai_scan' ? 'ai_scan' : 'manual',
       pointsEarned,
       co2Saved,
+      isHazardous: hazardous || false,
+      hazardType: hazardous ? hazardType : null,
+      safetyAck: hazardous ? true : false,
     };
 
-    if (aiScan && typeof aiScan === 'object') {
+    if (aiScan && typeof aiScan === 'object' && !Array.isArray(aiScan)) {
+      const confidence = aiScan.confidence != null ? Number(aiScan.confidence) : null;
       logData.aiScan = {
-        rawResponse: aiScan.rawResponse || null,
-        confidence: aiScan.confidence != null ? Number(aiScan.confidence) : null,
-        detectedCategory: aiScan.detectedCategory || null,
+        rawResponse: typeof aiScan.rawResponse === 'string' ? aiScan.rawResponse.slice(0, 4000) : null,
+        confidence: Number.isFinite(confidence) && confidence >= 0 && confidence <= 1 ? confidence : null,
+        detectedCategory: typeof aiScan.detectedCategory === 'string' ? aiScan.detectedCategory.slice(0, 50) : null,
       };
     }
 

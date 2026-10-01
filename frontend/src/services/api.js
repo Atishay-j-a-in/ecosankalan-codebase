@@ -15,7 +15,8 @@ import { Account } from 'appwrite';
 import appwriteClient from '../lib/appwrite';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL: import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : ''),
+  timeout: 20000,
 });
 
 // ── Auto-attach Appwrite JWT to every request ────────────────────────────────
@@ -40,12 +41,20 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Re-throw with a clean error message
+    const status = error?.response?.status;
+    // Expired/revoked Appwrite JWT: drop cached profile so ProtectedRoute redirects.
+    if (status === 401) {
+      localStorage.removeItem('user');
+    }
+    // Re-throw with a clean error message but keep the status for callers.
     const msg =
       error?.response?.data?.message ||
       error?.message ||
       'Network error. Please check your connection.';
-    return Promise.reject(new Error(msg));
+    const clean = new Error(msg);
+    clean.status = status;
+    clean.data = error?.response?.data;
+    return Promise.reject(clean);
   }
 );
 
@@ -144,7 +153,7 @@ export const getProducts = (category) =>
 export const getProductById = (id) => api.get(`/api/v1/products/${id}`);
 
 export const getProductRedirectUrl = (id) => {
-  const base = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const base = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : window.location.origin);
   return `${base}/api/v1/products/${id}/redirect`;
 };
 

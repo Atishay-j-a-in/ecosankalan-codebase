@@ -95,6 +95,15 @@ const wasteLogSchema = new mongoose.Schema(
       default: 'manual',
     },
 
+    // ── Health & safety (physician review) ────────────────────────────────────
+    isHazardous: { type: Boolean, default: false },
+    hazardType: {
+      type: String,
+      enum: [null, 'sanitary', 'biomedical', 'e-waste-unsafe', 'chemical', 'sharp', 'other-hazard'],
+      default: null,
+    },
+    safetyAck: { type: Boolean, default: false },
+
     aiScan: aiScanSchema, // null for manual logs, populated for AI scans
 
     // ── Calculated fields (computed at log time, stored for fast reads) ────────

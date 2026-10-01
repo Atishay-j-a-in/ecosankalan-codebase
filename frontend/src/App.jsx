@@ -28,7 +28,6 @@ import QuizPage            from './pages/QuizPage';
 import QuizResultPage      from './pages/QuizResultPage';
 import ScanResultPage      from './pages/ScanResultPage';
 import WasteHistoryPage    from './pages/WasteHistoryPage';
-import AnalyticsDashboardPage from './pages/AnalyticsDashboardPage';
 import ChallengeDetailPage     from './pages/ChallengeDetailPage';
 import EventDetailPage        from './pages/EventDetailPage';
 import WeeklyChallengesPage   from './pages/WeeklyChallengesPage';
@@ -36,6 +35,7 @@ import ProductDetailPage      from './pages/ProductDetailPage';
 import VouchersPage           from './pages/VouchersPage';
 import AdminDashboardPage     from './pages/AdminDashboardPage';
 import PrivacyPolicyPage      from './pages/PrivacyPolicyPage';
+import NotFoundPage           from './pages/NotFoundPage';
 import OAuthPage              from './pages/OAuthPage';
 import OAuthSuccessPage       from './pages/OAuthSuccessPage';
 import OAuthFailurePage       from './pages/OAuthFailurePage';
@@ -51,6 +51,15 @@ const ProtectedRoute = ({ children }) => {
   const { user, isLoading } = useAuth();
   if (isLoading) return null;
   return user ? children : <Navigate to="/login" replace />;
+};
+
+// ── Admin route: requires role admin (or ngo where needed) ─────────────
+const AdminRoute = ({ children }) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'admin') return <Navigate to="/dashboard" replace />;
+  return children;
 };
 
 function AppRoutes() {
@@ -92,11 +101,11 @@ function AppRoutes() {
       <Route path="/weekly-challenges"   element={<ProtectedRoute><WeeklyChallengesPage     /></ProtectedRoute>} />
       <Route path="/product-detail"      element={<ProtectedRoute><ProductDetailPage   /></ProtectedRoute>} />
       <Route path="/vouchers"            element={<ProtectedRoute><VouchersPage         /></ProtectedRoute>} />
-      <Route path="/admin"               element={<ProtectedRoute><AdminDashboardPage     /></ProtectedRoute>} />
+      <Route path="/admin"               element={<AdminRoute><AdminDashboardPage     /></AdminRoute>} />
       <Route path="/analytics"           element={<Navigate to="/impact" replace />} />
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

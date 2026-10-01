@@ -19,6 +19,14 @@ const User = require('../models/User');
 
 const router = express.Router();
 
+// Admin bootstrap: comma-separated emails promoted to admin on sync.
+// Example: ADMIN_EMAILS=vipin.gupta.ug24@nsut.ac.in,teammate@nsut.ac.in
+const adminEmails = () =>
+  (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
 /**
  * POST /api/v1/auth/sync
  * Protected. Called by the frontend after Appwrite authentication.
@@ -31,6 +39,11 @@ router.post('/sync', protect, async (req, res) => {
     const user = await User.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    // Promote configured admin emails without a redeploy-time code change.
+    if (adminEmails().includes(String(user.email || '').toLowerCase()) && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
     }
     return res.status(200).json({ success: true, user });
   } catch (error) {

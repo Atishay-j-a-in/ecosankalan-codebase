@@ -6,13 +6,15 @@ const NotificationService = require('../services/notificationService.js');
 
 const nowUTC = () => new Date();
 
-const DAY_START_HOUR_UTC = 7;
-const DAY_OFFSET_MS = DAY_START_HOUR_UTC * 60 * 60 * 1000;
+// IST day boundaries: IST midnight = 18:30 UTC of the previous day.
+// Snap by shifting to IST wall-clock, flooring to the day, shifting back.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
 
 const snapToDayStart = (date) => {
   const d = new Date(date);
-  d.setUTCHours(DAY_START_HOUR_UTC, 0, 0, 0);
-  return d;
+  const istWall = new Date(d.getTime() + IST_OFFSET_MS);
+  istWall.setUTCHours(0, 0, 0, 0);
+  return new Date(istWall.getTime() - IST_OFFSET_MS);
 };
 
 const durationDaysOf = (challenge) => {
@@ -37,7 +39,7 @@ const dayIndexForNow = (challenge, now = nowUTC()) => {
   const start = snapToDayStart(challenge.startDate);
   const expiry = snapToDayStart(challenge.expiryDate);
   if (now < start) return -1;
-  if (now >= expiry) return durationDaysOf(challenge) - 1;
+  if (now >= expiry) return -1;
   return Math.floor((now - start) / DAY_MS);
 };
 
@@ -223,6 +225,10 @@ exports.createChallenge = async (req, res) => {
 exports.updateChallenge = async (req, res) => {
   try {
     const { id } = req.params;
+    const existing = await Challenge.findById(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Challenge not found' });
+    }
     const allowedFields = ['title', 'description', 'startDate', 'expiryDate', 'isActive'];
     const updates = {};
     for (const field of allowedFields) {
@@ -245,13 +251,34 @@ exports.updateChallenge = async (req, res) => {
       };
     }
 
-    if (updates.startDate) updates.startDate = snapToDayStart(new Date(updates.startDate));
-    if (updates.expiryDate) updates.expiryDate = snapToDayStart(new Date(updates.expiryDate));
+    if (updates.startDate !== undefined) {
+      const parsed = new Date(updates.startDate);
+      if (Number.isNaN(parsed.getTime())) {
+        return res.status(400).json({ success: false, message: 'Invalid startDate' });
+      }
+      updates.startDate = snapToDayStart(parsed);
+    }
+    if (updates.expiryDate !== undefined) {
+      const parsed = new Date(updates.expiryDate);
+      if (Number.isNaN(parsed.getTime())) {
+        return res.status(400).json({ success: false, message: 'Invalid expiryDate' });
+      }
+      updates.expiryDate = snapToDayStart(parsed);
+    }
 
-    if (updates.startDate && updates.expiryDate && updates.expiryDate <= updates.startDate) {
+    const finalStart = updates.startDate || existing.startDate;
+    const finalExpiry = updates.expiryDate || existing.expiryDate;
+    if (finalExpiry <= finalStart) {
       return res.status(400).json({
         success: false,
         message: 'expiryDate must be after startDate',
+      });
+    }
+    const durationDays = Math.ceil((snapToDayStart(finalExpiry) - snapToDayStart(finalStart)) / DAY_MS);
+    if (durationDays < 1 || durationDays > Challenge.MAX_DURATION_DAYS) {
+      return res.status(400).json({
+        success: false,
+        message: `Challenge duration must be 1..${Challenge.MAX_DURATION_DAYS} days`,
       });
     }
 
@@ -382,22 +409,30 @@ exports.getChallengeById = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Challenge not found' });
     }
 
-    let progress = await ChallengeProgress.findOne({
+    const progress = await ChallengeProgress.findOne({
       userId: req.user.userId,
       challengeId: challenge._id,
     });
 
+    const totalDays = durationDaysOf(challenge);
+    const slots = buildDailySlots(challenge, now);
+
+    // Read-only: never auto-create progress on GET. Join via POST /:id/join.
     if (!progress) {
-      progress = await ChallengeProgress.create({
-        userId: req.user.userId,
-        challengeId: challenge._id,
-        joinedAt: now,
-        dailySubmissions: [],
+      const todayIndex = dayIndexForNow(challenge, now);
+      return res.status(200).json({
+        ...challenge.toObject({ virtuals: true }),
+        durationDays: totalDays,
+        dayIndexToday: todayIndex >= 0 && todayIndex < totalDays ? todayIndex : null,
+        joined: false,
+        joinedAt: null,
+        totalPoints: 0,
+        allCompleted: false,
+        completedAt: null,
+        dailySlots: slots.map((s) => ({ ...s, submission: null })),
       });
     }
 
-    const totalDays = durationDaysOf(challenge);
-    const slots = buildDailySlots(challenge, now);
     const slotsWithSubmission = attachUserSubmission(
       slots,
       progress.dailySubmissions,
@@ -479,21 +514,9 @@ exports.submitTask = async (req, res) => {
     });
 
     if (!progress) {
-      progress = await ChallengeProgress.create({
-        userId: req.user.userId,
-        challengeId: challenge._id,
-        joinedAt: now,
-        dailySubmissions: [],
-      });
-    }
-
-    const alreadySubmitted = (progress.dailySubmissions || []).some(
-      (s) => s.dayIndex === dayIndex && s.submittedAt
-    );
-    if (alreadySubmitted) {
-      return res.status(409).json({
+      return res.status(400).json({
         success: false,
-        message: 'You have already submitted today\'s task',
+        message: 'Join the challenge before submitting a task',
       });
     }
 
@@ -536,17 +559,36 @@ exports.submitTask = async (req, res) => {
       submittedAt: now,
     });
 
-    progress.dailySubmissions.push({
-      dayIndex,
-      submittedAt: now,
-      imageUrl,
-      imagePublicId,
-      remarks,
-      pointsAwarded,
-    });
+    // Atomic guard: only one concurrent submit for this dayIndex can win.
+    const updated = await ChallengeProgress.findOneAndUpdate(
+      {
+        _id: progress._id,
+        'dailySubmissions.dayIndex': { $ne: dayIndex },
+      },
+      {
+        $push: {
+          dailySubmissions: {
+            dayIndex,
+            submittedAt: now,
+            imageUrl,
+            imagePublicId,
+            remarks,
+            pointsAwarded,
+          },
+        },
+      },
+      { new: true }
+    );
 
-    recomputeTotals(progress, totalDays);
-    await progress.save();
+    if (!updated) {
+      return res.status(409).json({
+        success: false,
+        message: 'You have already submitted today\'s task',
+      });
+    }
+
+    recomputeTotals(updated, totalDays);
+    await updated.save();
 
     res.status(201).json({
       success: true,
@@ -557,8 +599,8 @@ exports.submitTask = async (req, res) => {
         remarks,
         pointsAwarded,
       },
-      totalPoints: progress.totalPoints,
-      allCompleted: progress.allCompleted,
+      totalPoints: updated.totalPoints,
+      allCompleted: updated.allCompleted,
     });
   } catch (err) {
     console.log('submitTask error:', err);

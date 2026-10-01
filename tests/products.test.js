@@ -40,6 +40,7 @@ const User = require('../src/models/User');
 jest.mock('../src/models/PartnerProduct', () => ({
   find: jest.fn(),
   findOne: jest.fn(),
+  countDocuments: jest.fn().mockResolvedValue(1),
 }));
 
 jest.mock('../src/models/User', () => ({
@@ -57,16 +58,19 @@ describe('Products API', () => {
   });
 
   test('GET products filters active listings by category', async () => {
+    const lean = jest.fn().mockResolvedValue([{ name: 'Bottle' }]);
+    const limit = jest.fn().mockReturnValue({ lean });
+    const skip = jest.fn().mockReturnValue({ limit });
     PartnerProduct.find.mockReturnValue({
-      sort: jest.fn().mockReturnValue({
-        lean: jest.fn().mockResolvedValue([{ name: 'Bottle' }]),
-      }),
+      sort: jest.fn().mockReturnValue({ skip }),
     });
 
     const res = await request(app).get('/api/v1/products?category=bottles');
 
     expect(res.statusCode).toBe(200);
     expect(PartnerProduct.find).toHaveBeenCalledWith({ isActive: true, category: 'bottles' });
+    expect(res.body.success).toBe(true);
+    expect(res.body.products).toEqual([{ name: 'Bottle' }]);
   });
 
   test('redirect appends UTM for allowlisted domain', async () => {

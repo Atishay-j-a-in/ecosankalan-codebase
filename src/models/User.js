@@ -27,7 +27,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
-      // match: [/^\\S+@\\S+\\.\\S+$/, 'Please enter a valid email address'],
+      match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address'],
     },
 
     phone: {
@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema(
       required: false,
       unique: true,
       sparse: true,
-      // match: [/^[6-9]\\d{9}$/, 'Please enter a valid 10-digit Indian mobile number'],
+      match: [/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian mobile number'],
     },
 
     appwriteUserId: {

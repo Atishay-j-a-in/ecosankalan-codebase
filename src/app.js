@@ -74,7 +74,9 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS policy: origin ${origin} not allowed`));
+        const err = new Error('CORS policy: origin not allowed');
+        err.statusCode = 403;
+        callback(err);
       }
     },
     credentials: true, // allow cookies/auth headers cross-origin
@@ -118,7 +120,17 @@ const globalLimiter = rateLimit({
   },
 });
 
-app.use('/api', globalLimiter);
+// Stricter limiter for auth sync/me (brute-force + token-spray protection).
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many auth attempts. Try again later.' },
+});
+
+app.use(['/api', '/auth', '/user', '/health'], globalLimiter);
+app.use(['/api/v1/auth', '/auth'], authLimiter);
 
 // ─────────────────────────────────────────────────
 // 7. ROUTES

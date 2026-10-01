@@ -47,6 +47,7 @@ const eventSchema = new mongoose.Schema(
       type: Number,
       default: 50,
       min: [0, 'Bonus points cannot be negative'],
+      max: [500, 'Bonus points cannot exceed 500'],
     },
     isCancelled: {
       type: Boolean,

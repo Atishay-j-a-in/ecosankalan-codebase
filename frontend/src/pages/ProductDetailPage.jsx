@@ -43,9 +43,10 @@ export default function ProductDetailPage() {
     const fetchRelated = async () => {
       try {
         const res = await getProducts(product.category);
-        if (res.data && res.data.length > 0) {
+        const list = Array.isArray(res.data) ? res.data : (res.data?.products || []);
+        if (list.length > 0) {
           // Filter out the current product
-          setRelated(res.data.filter(p => p._id !== product._id).slice(0, 4));
+          setRelated(list.filter(p => p._id !== product._id).slice(0, 4));
         }
       } catch (err) {
         console.error('Failed to load related products');

@@ -143,6 +143,12 @@ const protect = async (req, res, next) => {
  */
 const authorize = (...roles) => {
   return (req, res, next) => {
+    if (!req.user || !req.user.role) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required.',
+      });
+    }
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
@@ -153,4 +159,6 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { protect, authorize };
+const findOrCreateForTests = findOrCreateMongoUser;
+
+module.exports = { protect, authorize, findOrCreateMongoUser: findOrCreateForTests };

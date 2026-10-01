@@ -140,13 +140,14 @@ describe('Events API', () => {
   });
 
   test('RSVP duplicate returns 409', async () => {
-    Event.findById.mockResolvedValue({
+    const doc = {
       _id: 'event1',
       isCancelled: false,
       eventDate: new Date(Date.now() + 86400000),
       rsvpList: [userId],
       bonusPoints: 50,
-    });
+    };
+    Event.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(doc) });
 
     const res = await request(app)
       .post('/api/v1/events/event1/rsvp')
@@ -157,13 +158,14 @@ describe('Events API', () => {
   });
 
   test('RSVP credits points on first RSVP', async () => {
-    Event.findById.mockResolvedValue({
+    const doc = {
       _id: 'event1',
       isCancelled: false,
       eventDate: new Date(Date.now() + 86400000),
       rsvpList: [],
       bonusPoints: 50,
-    });
+    };
+    Event.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(doc) });
     Event.updateOne.mockResolvedValue({ modifiedCount: 1 });
     User.findByIdAndUpdate.mockResolvedValue({});
 

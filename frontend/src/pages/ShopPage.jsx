@@ -54,11 +54,13 @@ export default function ShopPage() {
           getMyVouchers(),
           getProfile(),
         ]);
-        setProducts(pRes.data.length > 0 ? pRes.data : FALLBACK_PRODUCTS);
-        setMyVouchers(vRes.data);
-        setUserPoints(uRes.data?.ecoPoints || 0);
+        const list = Array.isArray(pRes.data) ? pRes.data : (pRes.data?.products || []);
+        setProducts(list.length > 0 ? list : FALLBACK_PRODUCTS);
+        setMyVouchers(Array.isArray(vRes.data) ? vRes.data : []);
+        setUserPoints(uRes.data?.user?.ecoPoints ?? uRes.data?.ecoPoints ?? 0);
       } catch (err) {
-        // On error, show fallback products
+        // On error, show fallback products but surface the failure for debugging.
+        if (import.meta.env.DEV) console.error('[shop] failed to load:', err?.message || err);
         setProducts(FALLBACK_PRODUCTS);
       } finally {
         setLoading(false);

@@ -55,10 +55,12 @@ jest.mock('../src/models/User', () => ({
   findById: jest.fn(),
   findByIdAndUpdate: jest.fn(),
   findOne: jest.fn(),
+  findOneAndUpdate: jest.fn(),
 }));
 
 jest.mock('../src/models/Voucher', () => ({
   aggregate: jest.fn(),
+  findOne: jest.fn(),
   findOneAndUpdate: jest.fn(),
 }));
 
@@ -77,11 +79,12 @@ describe('Vouchers API', () => {
   });
 
   test('unlock succeeds and deducts points after voucher assignment', async () => {
-    User.findById.mockReturnValue(mockUserQuery({ _id: userId, ecoPoints: 500 }));
+    const cheapest = { _id: 'voucher1', partnerName: 'GreenKart', ecoPointsCost: 500 };
+    Voucher.findOne.mockResolvedValue(cheapest);
+    User.findOneAndUpdate.mockResolvedValue({ _id: userId, ecoPoints: 0 });
     const mockVoucher = { _id: 'voucher1', partnerName: 'GreenKart' };
     mockVoucher.toObject = function () { return { ...this }; };
     Voucher.findOneAndUpdate.mockResolvedValue(mockVoucher);
-    User.findByIdAndUpdate.mockResolvedValue({});
 
     const res = await request(app)
       .post('/api/v1/vouchers/unlock')
@@ -89,12 +92,17 @@ describe('Vouchers API', () => {
       .send({ partnerName: 'GreenKart' });
 
     expect(res.statusCode).toBe(200);
+    expect(res.body.cost).toBe(500);
     expect(Voucher.findOneAndUpdate).toHaveBeenCalledWith(
-      { assignedTo: null, partnerName: 'GreenKart' },
+      expect.objectContaining({ assignedTo: null }),
       expect.any(Object),
       expect.objectContaining({ new: true })
     );
-    expect(User.findByIdAndUpdate).toHaveBeenCalledWith(userId, { $inc: { ecoPoints: -500 } });
+    expect(User.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ ecoPoints: { $gte: 500 } }),
+      { $inc: { ecoPoints: -500 } },
+      expect.objectContaining({ new: true })
+    );
   });
 
   test('GET my returns assigned vouchers active first', async () => {
@@ -113,7 +121,8 @@ describe('Vouchers API', () => {
   });
 
   test('unlock with insufficient points returns 400 and does not assign voucher', async () => {
-    User.findById.mockReturnValue(mockUserQuery({ _id: userId, ecoPoints: 100 }));
+    Voucher.findOne.mockResolvedValue({ _id: 'voucher1', partnerName: 'GreenKart', ecoPointsCost: 500 });
+    User.findOneAndUpdate.mockResolvedValue(null);
 
     const res = await request(app)
       .post('/api/v1/vouchers/unlock')
@@ -122,12 +131,10 @@ describe('Vouchers API', () => {
 
     expect(res.statusCode).toBe(400);
     expect(Voucher.findOneAndUpdate).not.toHaveBeenCalled();
-    expect(User.findByIdAndUpdate).not.toHaveBeenCalled();
   });
 
   test('unlock with empty pool returns 409 and does not deduct points', async () => {
-    User.findById.mockReturnValue(mockUserQuery({ _id: userId, ecoPoints: 500 }));
-    Voucher.findOneAndUpdate.mockResolvedValue(null);
+    Voucher.findOne.mockResolvedValue(null);
 
     const res = await request(app)
       .post('/api/v1/vouchers/unlock')
@@ -135,6 +142,6 @@ describe('Vouchers API', () => {
       .send({ partnerName: 'GreenKart' });
 
     expect(res.statusCode).toBe(409);
-    expect(User.findByIdAndUpdate).not.toHaveBeenCalled();
+    expect(User.findOneAndUpdate).not.toHaveBeenCalled();
   });
 });

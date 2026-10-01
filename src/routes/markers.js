@@ -23,13 +23,31 @@ router.get('/', async (req, res) => {
       });
     }
 
+    const n = parseFloat(north);
+    const s = parseFloat(south);
+    const e = parseFloat(east);
+    const w = parseFloat(west);
+    if (![n, s, e, w].every(Number.isFinite)) {
+      return res.status(400).json({ success: false, message: 'Bounding box must be numeric' });
+    }
+    if (n < -90 || n > 90 || s < -90 || s > 90 || e < -180 || e > 180 || w < -180 || w > 180) {
+      return res.status(400).json({ success: false, message: 'Bounding box out of range' });
+    }
+    if (n <= s || e <= w) {
+      return res.status(400).json({ success: false, message: 'Invalid bounding box: require north>south and east>west' });
+    }
+    // Prevent full-planet scans.
+    if (n - s > 10 || e - w > 10) {
+      return res.status(400).json({ success: false, message: 'Bounding box too large. Zoom in.' });
+    }
+
     const filter = {
       isActive: true,
       location: {
         $geoWithin: {
           $box: [
-            [parseFloat(west), parseFloat(south)],
-            [parseFloat(east), parseFloat(north)],
+            [w, s],
+            [e, n],
           ],
         },
       },
@@ -40,7 +58,7 @@ router.get('/', async (req, res) => {
       filter.category = { $in: catList };
     }
 
-    const markers = await MapMarker.find(filter).lean();
+    const markers = await MapMarker.find(filter).limit(500).lean();
 
     const locations = markers.map((m) => ({
       id: `${m.osmType}_${m.osmId}`,
