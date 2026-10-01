@@ -41,6 +41,7 @@ export default function VouchersPage() {
   const [cat,         setCat]         = useState('All Rewards');
   const [loading,     setLoading]     = useState(true);
   const [unlocking,   setUnlocking]   = useState(null); // partnerName being unlocked
+  const [confirmReward, setConfirmReward] = useState(null); // reward awaiting confirm
   const [error,       setError]       = useState('');
   const [successMsg,  setSuccessMsg]  = useState('');
 
@@ -48,8 +49,8 @@ export default function VouchersPage() {
     const load = async () => {
       try {
         const [vRes, pRes] = await Promise.all([getMyVouchers(), getProfile()]);
-        setMyVouchers(vRes.data);
-        setEcoPoints(pRes.data?.ecoPoints || 0);
+        setMyVouchers(Array.isArray(vRes.data) ? vRes.data : []);
+        setEcoPoints(pRes.data?.user?.ecoPoints ?? pRes.data?.ecoPoints ?? 0);
       } catch (err) {
         setError(err.message || 'Failed to load vouchers');
       } finally {
@@ -66,6 +67,7 @@ export default function VouchersPage() {
       setError(`You need ${reward.pts} points to unlock this reward. You have ${ecoPoints}.`);
       return;
     }
+    setConfirmReward(null);
     setUnlocking(reward.brand);
     setError('');
     setSuccessMsg('');
@@ -117,17 +119,17 @@ export default function VouchersPage() {
 
         {/* Alerts */}
         {error && (
-          <div className="vr-alert error">
+          <div className="vr-alert error" role="alert">
             <span className="material-symbols-outlined">error</span>
             {error}
-            <button onClick={() => setError('')}><span className="material-symbols-outlined">close</span></button>
+            <button onClick={() => setError('')} aria-label="Dismiss error"><span className="material-symbols-outlined">close</span></button>
           </div>
         )}
         {successMsg && (
-          <div className="vr-alert success">
+          <div className="vr-alert success" role="status">
             <span className="material-symbols-outlined">check_circle</span>
             {successMsg}
-            <button onClick={() => setSuccessMsg('')}><span className="material-symbols-outlined">close</span></button>
+            <button onClick={() => setSuccessMsg('')} aria-label="Dismiss message"><span className="material-symbols-outlined">close</span></button>
           </div>
         )}
 
@@ -217,7 +219,8 @@ export default function VouchersPage() {
                   <button
                     className="vr-unlock-btn"
                     disabled={unlocking === r.brand || ecoPoints < r.pts}
-                    onClick={() => handleUnlock(r)}
+                    onClick={() => setConfirmReward(r)}
+                    aria-label={`Unlock ${r.brand} reward for ${r.pts} points`}
                   >
                     {unlocking === r.brand ? (
                       <span className="material-symbols-outlined" style={{ animation: 'spin 1s linear infinite' }}>progress_activity</span>
@@ -231,6 +234,31 @@ export default function VouchersPage() {
 
       </main>
       <BottomNav />
+
+      {/* Unlock confirmation — points deduction is irreversible */}
+      {confirmReward && (
+        <div className="log-modal-overlay" role="dialog" aria-modal="true" aria-label={`Confirm unlocking ${confirmReward.brand} reward`}>
+          <div className="log-modal-backdrop" onClick={() => setConfirmReward(null)} />
+          <div className="log-modal-card">
+            <div className="log-modal-icon">
+              <span className="material-symbols-outlined" style={{ fontSize: '2.5rem' }}>confirmation_number</span>
+            </div>
+            <h2 className="log-modal-title">Unlock {confirmReward.brand}?</h2>
+            <p className="log-modal-sub">
+              This will deduct <strong>{confirmReward.pts} pts</strong> from your balance of{' '}
+              <strong>{ecoPoints.toLocaleString('en-IN')} pts</strong>. This cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              <button className="log-modal-close-btn" style={{ background: 'var(--surface-container)', color: 'var(--on-surface)' }} onClick={() => setConfirmReward(null)}>
+                Cancel
+              </button>
+              <button className="log-modal-close-btn" onClick={() => handleUnlock(confirmReward)} disabled={unlocking === confirmReward.brand}>
+                {unlocking === confirmReward.brand ? 'Unlocking…' : `Confirm • ${confirmReward.pts} pts`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

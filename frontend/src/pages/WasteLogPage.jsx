@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/common/BottomNav';
 import Navbar from '../components/common/Navbar';
@@ -14,6 +14,16 @@ const CATEGORIES = [
   { id: 'metal',    label: 'Metal',    icon: 'precision_manufacturing', bg: 'bg-surface-container-highest', iconColor: 'text-on-surface-variant' },
   { id: 'paper',    label: 'Paper',    icon: 'description',            bg: 'bg-secondary-fixed',     iconColor: 'text-on-secondary-fixed-variant' },
   { id: 'other',    label: 'Other',    icon: 'pending',                bg: 'bg-surface-dim',         iconColor: 'text-on-surface' },
+];
+
+// Hazardous waste types (backend enum)
+const HAZARDS = [
+  { id: 'sanitary',       label: 'Sanitary waste' },
+  { id: 'biomedical',     label: 'Biomedical / masks' },
+  { id: 'e-waste-unsafe', label: 'Unsafe e-waste (batteries, CFL)' },
+  { id: 'chemical',       label: 'Chemical / paint' },
+  { id: 'sharp',          label: 'Sharps (glass, blades)' },
+  { id: 'other-hazard',   label: 'Other hazard' },
 ];
 
 // Points per kg for preview (matches backend)
@@ -34,6 +44,17 @@ export default function WasteLogPage() {
   const [scanning,   setScanning]   = useState(null);
   const [error,      setError]      = useState('');
   const [logResult,  setLogResult]  = useState(null); // holds { pointsEarned, co2Saved }
+  const [isHazardous, setIsHazardous] = useState(false);
+  const [hazardType,  setHazardType]  = useState('');
+  const [safetyAck,   setSafetyAck]   = useState(false);
+
+  // Escape closes the success modal (a11y)
+  useEffect(() => {
+    if (!showModal) return;
+    const onKey = (e) => { if (e.key === 'Escape') handleClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showModal]);
 
   const pts = Math.round((PTS_MAP[selected] || 2) * qty);
   const co2 = ((CO2_MAP[selected] || 0.3) * qty).toFixed(2);
@@ -41,6 +62,14 @@ export default function WasteLogPage() {
   // ── Manual Log Submit ────────────────────────────────────────────────────
   const handleSubmit = async () => {
     setError('');
+    if (isHazardous && !hazardType) {
+      setError('Please choose the hazard type for hazardous waste.');
+      return;
+    }
+    if (isHazardous && !safetyAck) {
+      setError('Please confirm you handled it safely (gloves/mask, no burning or mixing with household waste).');
+      return;
+    }
     setSubmitting(true);
     try {
       const { data } = await logWaste({
@@ -49,6 +78,7 @@ export default function WasteLogPage() {
         unit: 'kg',
         description: notes,
         logMethod: 'manual',
+        ...(isHazardous ? { isHazardous: true, hazardType, safetyAck: true } : {}),
       });
       setLogResult({ pointsEarned: data.pointsEarned, co2Saved: data.co2Saved });
       await refreshAllStats(); // Refresh global stats immediately after logging
@@ -64,6 +94,9 @@ export default function WasteLogPage() {
     setShowModal(false);
     setLogResult(null);
     setNotes('');
+    setIsHazardous(false);
+    setHazardType('');
+    setSafetyAck(false);
   };
 
   // ── AI Scan ──────────────────────────────────────────────────────────────
@@ -211,7 +244,7 @@ export default function WasteLogPage() {
           </div>
           <div className="log-category-grid">
             {CATEGORIES.map(cat => (
-              <button key={cat.id} className={`log-cat-btn${selected === cat.id ? ' selected' : ''}`} onClick={() => setSelected(cat.id)}>
+              <button key={cat.id} className={`log-cat-btn${selected === cat.id ? ' selected' : ''}`} onClick={() => setSelected(cat.id)} aria-pressed={selected === cat.id} aria-label={`${cat.label} waste category`}>
                 <div className={`log-cat-icon ${cat.bg}${selected === cat.id ? ' scaled' : ''}`}>
                   <span className={`material-symbols-outlined ${cat.iconColor}`} style={cat.fill ? { fontVariationSettings: "'FILL' 1" } : {}}>{cat.icon}</span>
                 </div>
@@ -240,6 +273,8 @@ export default function WasteLogPage() {
             max="10"
             step="0.1"
             value={qty}
+            aria-label="Waste quantity in kilograms"
+            aria-valuetext={`${qty.toFixed(1)} kilograms`}
             onChange={e => setQty(parseFloat(e.target.value))}
           />
           <div className="log-slider-labels">
@@ -281,6 +316,48 @@ export default function WasteLogPage() {
           />
         </section>
 
+        {/* Hazardous waste flag (health & safety) */}
+        <section className="log-notes-section">
+          <label className="log-notes-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={isHazardous}
+              onChange={e => { setIsHazardous(e.target.checked); setSafetyAck(false); }}
+              aria-label="This waste is hazardous"
+            />
+            ⚠️ This waste is hazardous
+          </label>
+          {isHazardous && (
+            <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <select
+                className="log-notes-textarea"
+                value={hazardType}
+                onChange={e => setHazardType(e.target.value)}
+                aria-label="Hazard type"
+                style={{ padding: '0.75rem' }}
+              >
+                <option value="">Select hazard type…</option>
+                {HAZARDS.map(h => (
+                  <option key={h.id} value={h.id}>{h.label}</option>
+                ))}
+              </select>
+              <div style={{ background: '#fff8e1', border: '1px solid #ffe082', borderRadius: '12px', padding: '0.75rem', fontSize: '0.85rem', color: '#5d4037' }}>
+                Never burn hazardous waste or mix it with household trash. Use gloves and a mask, seal it separately, and hand it to an authorised collector.
+              </div>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={safetyAck}
+                  onChange={e => setSafetyAck(e.target.checked)}
+                  aria-label="I handled this hazardous waste safely"
+                  style={{ marginTop: '0.2rem' }}
+                />
+                I handled this safely (gloves/mask, sealed separately, no burning)
+              </label>
+            </div>
+          )}
+        </section>
+
         <div className="log-submit-wrap">
           <button className="log-submit-btn" onClick={handleSubmit} disabled={submitting}>
             {submitting ? (
@@ -303,7 +380,7 @@ export default function WasteLogPage() {
 
       {/* Success Modal */}
       {showModal && (
-        <div className="log-modal-overlay">
+        <div className="log-modal-overlay" role="dialog" aria-modal="true" aria-label="Waste logged successfully">
           <div className="log-modal-backdrop" onClick={handleClose} />
           <div className="log-modal-card">
             <div className="log-modal-icon">

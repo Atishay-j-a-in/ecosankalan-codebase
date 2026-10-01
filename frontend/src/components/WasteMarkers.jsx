@@ -265,17 +265,23 @@ export default function WasteMarkers({ map, onMarkerClick }) {
       )}
 
       {!loading && error && (
-        <div className="waste-error-badge">
+        <div className="waste-error-badge" role="alert">
           <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>error</span>
-          <span>Could not load markers. </span>
-          <button type="button" className="waste-retry-btn" onClick={() => {
-            if (!map) return;
-            const b = map.getBounds();
-            fetchData({
-              north: b.getNorth(), south: b.getSouth(),
-              east: b.getEast(), west: b.getWest(),
-            });
-          }}>retry</button>
+          {/bounding box/i.test(error) ? (
+            <span>Zoom in to load markers.</span>
+          ) : (
+            <>
+              <span>Could not load markers. </span>
+              <button type="button" className="waste-retry-btn" aria-label="Retry loading markers" onClick={() => {
+                if (!map) return;
+                const b = map.getBounds();
+                fetchData({
+                  north: b.getNorth(), south: b.getSouth(),
+                  east: b.getEast(), west: b.getWest(),
+                });
+              }}>retry</button>
+            </>
+          )}
         </div>
       )}
     </div>
