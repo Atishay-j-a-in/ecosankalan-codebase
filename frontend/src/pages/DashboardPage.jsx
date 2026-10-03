@@ -5,7 +5,7 @@ import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
 import DashboardSkeleton from '../components/dashboard/DashboardSkeleton';
 import TutorialOverlay from '../components/common/TutorialOverlay';
-import { getActiveChallenges, getUpcomingEvents, getProfile, getWasteHistory } from '../services/api';
+import { getActiveChallenges, getUpcomingEvents, getProfile } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useStats } from '../context/StatsContext';
 import '../styles/dashboard.css';
@@ -17,15 +17,6 @@ const WASTE_FACTS = [
   'Recycling one ton of paper saves 17 trees and 7,000 gallons of water.',
   'Plastic bags take 10–1,000 years to decompose in landfills.',
 ];
-
-const CATEGORY_META = {
-  plastic:   { icon: 'recycling',               color: 'var(--primary)' },
-  organic:   { icon: 'compost',                 color: 'var(--tertiary)' },
-  'e-waste': { icon: 'devices',                 color: '#782c39' },
-  metal:     { icon: 'precision_manufacturing', color: '#1b6b3a' },
-  paper:     { icon: 'description',             color: '#005127' },
-  other:     { icon: 'pending',                 color: 'var(--outline)' },
-};
 
 // Derive Eco Score from stats (simple formula for now)
 const computeEcoScore = (stats) => {
@@ -49,6 +40,7 @@ export default function DashboardPage() {
   // Cached server state via React Query and StatsContext
   const { statsData, loading: statsLoading } = useStats();
   const stats = statsData.week; // waste stats for current week
+  const recentLogs = stats?.recentLogs || []; // recent waste logs
 
   const { data: challenges = [], isLoading: challengesLoading } = useQuery({
     queryKey: ['challenges', 'active'],
@@ -77,19 +69,6 @@ export default function DashboardPage() {
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
   });
-
-  // Recent waste history query — ensures recent activity feed shows at most the last 2 waste logs
-  const { data: historyData } = useQuery({
-    queryKey: ['wasteHistory', 'recent'],
-    queryFn: async () => {
-      const res = await getWasteHistory({ limit: 2 });
-      return res.data;
-    },
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const recentLogs = (historyData?.logs || stats?.recentLogs || []).slice(0, 2);
 
   // Sync profile data to AuthContext if newer data arrived
   useEffect(() => {
@@ -198,25 +177,16 @@ export default function DashboardPage() {
   });
 
   // Build activity feed from real recent logs (empty array when none exist — no fake fallback data)
-  const activityFeed = recentLogs.map((log) => {
-    const cat = (log.category || '').toLowerCase();
-    const metaConfig = CATEGORY_META[cat] || CATEGORY_META.other;
-    const catFormatted = log.category ? log.category.charAt(0).toUpperCase() + log.category.slice(1) : 'Waste';
-    const logDate = new Date(log.createdAt);
-    const isToday = new Date().toDateString() === logDate.toDateString();
-    const dateStr = isToday ? 'Today' : logDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-
-    return {
-      id: log._id,
-      icon: metaConfig.icon,
-      iconColor: metaConfig.color,
-      title: `${catFormatted} Waste Logged`,
-      meta: `${log.unit === 'g' ? (log.quantity / 1000).toFixed(2) : log.quantity.toFixed(1)} kg • ${dateStr}`,
-      points: `+${log.pointsEarned} pts`,
-      pointsType: 'positive',
-      status: log.pointsEarned > 0 ? 'Verified' : 'Pending',
-    };
-  });
+  const activityFeed = recentLogs.map((log) => ({
+    id: log._id,
+    icon: 'recycling',
+    iconColor: 'var(--primary)',
+    title: `${log.category} Waste Logged`,
+    meta: `${log.unit === 'g' ? (log.quantity / 1000).toFixed(2) : log.quantity.toFixed(1)} kg • ${new Date(log.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`,
+    points: `+${log.pointsEarned} pts`,
+    pointsType: 'positive',
+    status: log.pointsEarned > 0 ? 'Verified' : 'Pending',
+  }));
 
   return (
     <div className="dashboard-root">
