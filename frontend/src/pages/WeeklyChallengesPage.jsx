@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
 import Loader from '../components/common/Loader';
@@ -54,29 +55,23 @@ const timeLeft = (deadline) => {
 
 export default function WeeklyChallengesPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState('All');
-  const [challenges, setChallenges] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await getActiveChallenges();
-        setChallenges(data);
-      } catch (err) {
-        setError(err.message || 'Failed to load challenges');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const { data: challenges = [], isLoading: loading } = useQuery({
+    queryKey: ['challenges', 'active'],
+    queryFn: async () => {
+      const res = await getActiveChallenges();
+      return Array.isArray(res.data) ? res.data : [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const handleJoin = async (challengeId) => {
     try {
       await joinChallenge(challengeId);
-      const { data } = await getActiveChallenges();
-      setChallenges(data);
+      await queryClient.invalidateQueries({ queryKey: ['challenges', 'active'] });
     } catch (err) {
       setError(err.message || 'Failed to join challenge');
     }

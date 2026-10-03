@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useMemo, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getWasteStats } from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -6,65 +7,68 @@ const StatsContext = createContext();
 
 export const StatsProvider = ({ children }) => {
   const { user } = useAuth();
-  
-  const [statsData, setStatsData] = useState({
-    week: null,
-    month: null,
-    all: null,
-  });
-  
-  const [loading, setLoading] = useState(false);
+  const userId = user?._id || user?.id || null;
+  const queryClient = useQueryClient();
 
-  const fetchStatsForRange = useCallback(async (range, force = false) => {
-    if (!user) return null;
-    
-    // Use cached data if available and not forced
-    if (statsData[range] && !force) {
-      return statsData[range];
-    }
-
-    setLoading(true);
-    try {
-      const res = await getWasteStats(range);
-      setStatsData(prev => ({ ...prev, [range]: res.data }));
+  // Weekly stats query (used on Dashboard and Impact)
+  const weekQuery = useQuery({
+    queryKey: ['wasteStats', userId, 'week'],
+    queryFn: async () => {
+      const res = await getWasteStats('week');
       return res.data;
-    } catch (err) {
-      console.error(`Failed to fetch stats for range ${range}:`, err);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, [user, statsData]);
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
 
+  // All-time stats query (used on Profile and Impact)
+  const allQuery = useQuery({
+    queryKey: ['wasteStats', userId, 'all'],
+    queryFn: async () => {
+      const res = await getWasteStats('all');
+      return res.data;
+    },
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Read month data from cache if present
+  const monthData = userId ? (queryClient.getQueryData(['wasteStats', userId, 'month']) || null) : null;
+
+  // Fetch or retrieve cached stats for a specific range ('week', 'month', 'all')
+  const fetchStatsForRange = useCallback(async (range, force = false) => {
+    if (!userId) return null;
+    const queryKey = ['wasteStats', userId, range];
+    if (force) {
+      await queryClient.invalidateQueries({ queryKey });
+    }
+    return queryClient.fetchQuery({
+      queryKey,
+      queryFn: async () => {
+        const res = await getWasteStats(range);
+        return res.data;
+      },
+      staleTime: force ? 0 : 5 * 60 * 1000,
+    });
+  }, [userId, queryClient]);
+
+  // Invalidate queries so fresh stats, history, and profile are fetched after waste is logged
   const refreshAllStats = useCallback(async () => {
-    if (!user) return;
-    
-    // Refetch the ranges we commonly use to keep them fresh
-    try {
-      const [weekRes, allRes] = await Promise.allSettled([
-        getWasteStats('week'),
-        getWasteStats('all')
-      ]);
-      
-      setStatsData(prev => ({
-        ...prev,
-        week: weekRes.status === 'fulfilled' ? weekRes.value.data : prev.week,
-        all: allRes.status === 'fulfilled' ? allRes.value.data : prev.all,
-        month: null, // Clear month cache so it refetches next time it's needed
-      }));
-    } catch (err) {
-      console.error('Failed to refresh stats:', err);
-    }
-  }, [user]);
+    if (!userId) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['wasteStats', userId] }),
+      queryClient.invalidateQueries({ queryKey: ['wasteHistory'] }),
+      queryClient.invalidateQueries({ queryKey: ['profile'] }),
+    ]);
+  }, [userId, queryClient]);
 
-  // Initial load when user signs in
-  useEffect(() => {
-    if (user) {
-      refreshAllStats();
-    } else {
-      setStatsData({ week: null, month: null, all: null });
-    }
-  }, [user, refreshAllStats]);
+  const statsData = useMemo(() => ({
+    week: weekQuery.data || null,
+    month: monthData,
+    all: allQuery.data || null,
+  }), [weekQuery.data, monthData, allQuery.data]);
+
+  const loading = weekQuery.isLoading || allQuery.isLoading;
 
   return (
     <StatsContext.Provider value={{ statsData, loading, fetchStatsForRange, refreshAllStats }}>

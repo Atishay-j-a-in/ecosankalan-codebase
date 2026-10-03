@@ -6,10 +6,10 @@ import { saveFCMToken } from "../services/notificationService";
 
 //setup fcm token and save it to the backend
 export default function useFCM(user) {
+  const userId = user?._id || user?.id;
 
   useEffect(() => {
-
-    if (!user) return;
+    if (!userId) return;
 
     if (!messaging) return; // push not configured — skip silently
 
@@ -53,6 +53,6 @@ export default function useFCM(user) {
 
     setup();
 
-  }, [user]);
+  }, [userId]);
 
 }

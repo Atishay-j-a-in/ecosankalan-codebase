@@ -2,83 +2,66 @@ import '../../styles/skeleton.css';
 
 export default function DashboardSkeleton() {
   return (
-    <main className="dashboard-main skeleton-page">
+    <main className="dashboard-main skeleton-page" aria-busy="true" aria-label="Loading dashboard">
 
-      {/* Hero Grid Skeleton */}
-      <section className="hero-grid">
-
-        {/* Eco Score Card skeleton */}
-        <div className="eco-score-card">
-          <div className="eco-score-top-row">
-            <div className="eco-score-left">
-              <div className="skel skel-circle" style={{ width: 70, height: 70 }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div className="skel skel-line" style={{ width: 60, height: 10 }} />
-                <div className="skel skel-line" style={{ width: 48, height: 36 }} />
-              </div>
-            </div>
-            <div className="skel skel-pill" style={{ width: 64, height: 24 }} />
-          </div>
-          <div className="eco-score-bottom" style={{ gap: 12 }}>
-            <div className="skel skel-line" style={{ width: '60%', height: 24 }} />
-            <div className="skel skel-line" style={{ width: '90%', height: 14 }} />
-            <div className="skel skel-line" style={{ width: '80%', height: 14 }} />
-            <div className="skel skel-pill" style={{ width: 160, height: 36 }} />
-          </div>
+      {/* ── Immersive Nature Hero Skeleton (matches current hero-immersive) ── */}
+      <section className="hero-immersive">
+        <div className="hero-immersive-bg">
+          <div className="hero-glass-sun" />
         </div>
 
-        {/* Impact Bento skeleton */}
-        <div className="impact-bento">
-          <div className="bento-points" style={{ gap: 12 }}>
-            <div className="skel skel-circle" style={{ width: 40, height: 40 }} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div className="skel skel-line" style={{ width: '50%', height: 12 }} />
-              <div className="skel skel-line" style={{ width: '70%', height: 28 }} />
+        <div className="hero-immersive-content">
+          <div className="hero-immersive-top">
+            <div className="hi-text-content">
+              <div className="skel skel-line" style={{ width: 100, height: 12, opacity: 0.4, marginBottom: 10 }} />
+              <div className="skel skel-line" style={{ width: 180, height: 32, opacity: 0.5, marginBottom: 10 }} />
+              <div className="skel skel-line" style={{ width: '80%', height: 14, opacity: 0.35, marginBottom: 14 }} />
+              <div className="skel skel-pill" style={{ width: 75, height: 22, opacity: 0.35 }} />
+            </div>
+
+            <div className="hi-score-ring" style={{ pointerEvents: 'none' }}>
+              <div className="skel skel-circle" style={{ width: 44, height: 44, opacity: 0.35 }} />
             </div>
           </div>
-          <div className="bento-fact" style={{ gap: 10 }}>
-            <div className="skel skel-line" style={{ width: '40%', height: 14 }} />
-            <div className="skel skel-line" style={{ width: '100%', height: 12 }} />
-            <div className="skel skel-line" style={{ width: '85%', height: 12 }} />
-            <div className="skel skel-line" style={{ width: '60%', height: 12 }} />
-          </div>
-          <div className="bento-small">
-            <div className="skel skel-circle" style={{ width: 32, height: 32 }} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div className="skel skel-line" style={{ width: '50%', height: 11 }} />
-              <div className="skel skel-line" style={{ width: '70%', height: 20 }} />
-            </div>
-          </div>
-          <div className="bento-small">
-            <div className="skel skel-circle" style={{ width: 32, height: 32 }} />
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div className="skel skel-line" style={{ width: '50%', height: 11 }} />
-              <div className="skel skel-line" style={{ width: '70%', height: 20 }} />
-            </div>
+
+          <div className="hero-immersive-stats">
+            {[1, 2, 3].map((i) => (
+              <div className="hi-stat-card" key={i} style={{ gap: 6 }}>
+                <div className="skel skel-circle" style={{ width: 24, height: 24, opacity: 0.35, marginBottom: 4 }} />
+                <div className="skel skel-line" style={{ width: 48, height: 18, opacity: 0.45 }} />
+                <div className="skel skel-line" style={{ width: 36, height: 10, opacity: 0.3 }} />
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Feed + Challenge skeleton */}
+      {/* ── Daily Fact Strip Skeleton ── */}
+      <div className="daily-fact-strip" style={{ opacity: 0.85 }}>
+        <div className="skel skel-circle" style={{ width: 24, height: 24 }} />
+        <div className="skel skel-line" style={{ flex: 1, height: 14, margin: '0 8px' }} />
+      </div>
+
+      {/* ── Feed + Challenge Skeleton (matches feed-grid) ── */}
       <section className="feed-grid">
         <div className="feed-col">
           <div className="feed-header">
-            <div className="skel skel-line" style={{ width: 160, height: 20 }} />
-            <div className="skel skel-pill" style={{ width: 60, height: 28 }} />
+            <div className="skel skel-line" style={{ width: 180, height: 22 }} />
+            <div className="skel skel-pill" style={{ width: 64, height: 28 }} />
           </div>
           <div className="activity-list">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3].map((i) => (
               <div className="activity-item" key={i}>
                 <div className="activity-left">
                   <div className="skel skel-circle" style={{ width: 44, height: 44 }} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div className="skel skel-line" style={{ width: 140, height: 14 }} />
-                    <div className="skel skel-line" style={{ width: 100, height: 11 }} />
+                    <div className="skel skel-line" style={{ width: 90, height: 11 }} />
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-                  <div className="skel skel-pill" style={{ width: 52, height: 20 }} />
-                  <div className="skel skel-line" style={{ width: 52, height: 14 }} />
+                  <div className="skel skel-pill" style={{ width: 52, height: 18 }} />
+                  <div className="skel skel-line" style={{ width: 44, height: 12 }} />
                 </div>
               </div>
             ))}
@@ -86,18 +69,43 @@ export default function DashboardSkeleton() {
         </div>
 
         <div className="challenge-col">
-          <div className="skel skel-line" style={{ width: 140, height: 20, marginBottom: 12 }} />
-          <div className="skel" style={{ width: '100%', height: 260, borderRadius: '1.5rem' }} />
+          <div className="challenge-col-header">
+            <div className="skel skel-line" style={{ width: 150, height: 22 }} />
+            <div className="skel skel-line" style={{ width: 40, height: 14 }} />
+          </div>
+          <div className="challenge-card" style={{ overflow: 'hidden' }}>
+            <div className="skel" style={{ width: '100%', height: 130 }} />
+            <div className="challenge-content" style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '1rem' }}>
+              <div className="skel skel-line" style={{ width: '70%', height: 18 }} />
+              <div className="skel skel-line" style={{ width: '90%', height: 12 }} />
+              <div className="skel skel-line" style={{ width: '40%', height: 12 }} />
+              <div className="skel skel-pill" style={{ width: '100%', height: 36, marginTop: 4 }} />
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* AI Scan scanning indicator overlay */}
-      <div className="skeleton-scan-hint">
-        <div className="skeleton-scan-pulse">
-          <span className="material-symbols-outlined">camera</span>
+      {/* ── Weekly Challenges Skeleton ── */}
+      <section className="weekly-challenges-section">
+        <div className="feed-header">
+          <div className="skel skel-line" style={{ width: 160, height: 22 }} />
+          <div className="skel skel-pill" style={{ width: 64, height: 28 }} />
         </div>
-        <p>Loading your eco data…</p>
-      </div>
+        <div className="weekly-challenges-preview">
+          {[1, 2].map((i) => (
+            <div key={i} className="wc-preview-card" style={{ pointerEvents: 'none' }}>
+              <div className="wc-preview-icon-wrap" style={{ background: 'var(--surface-container-high)' }}>
+                <div className="skel skel-circle" style={{ width: 24, height: 24 }} />
+              </div>
+              <div className="wc-preview-info" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="skel skel-line" style={{ width: '60%', height: 14 }} />
+                <div className="skel skel-line" style={{ width: '80%', height: 8 }} />
+              </div>
+              <div className="skel skel-pill" style={{ width: 70, height: 22 }} />
+            </div>
+          ))}
+        </div>
+      </section>
 
     </main>
   );

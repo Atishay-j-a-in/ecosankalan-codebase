@@ -37,14 +37,24 @@ import AdminDashboardPage     from './pages/AdminDashboardPage';
 import PrivacyPolicyPage      from './pages/PrivacyPolicyPage';
 import NotFoundPage           from './pages/NotFoundPage';
 import OAuthPage              from './pages/OAuthPage';
+import useFCM from './hooks/useFCM';
 import OAuthSuccessPage       from './pages/OAuthSuccessPage';
 import OAuthFailurePage       from './pages/OAuthFailurePage';
 import OAuthDashboardPage     from './pages/OAuthDashboardPage';
 
 import './styles/global.css';
 
-// ── TanStack Query client for Appwrite React SDK ─────────────────────
-const queryClient = new QueryClient();
+// ── TanStack Query client with sensible caching defaults ─────────────
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes fresh
+      gcTime: 15 * 60 * 1000,   // 15 minutes cache retention
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 // ── Protected route: redirects to /login if not authenticated ────────
 const ProtectedRoute = ({ children }) => {
@@ -65,6 +75,7 @@ const AdminRoute = ({ children }) => {
 function AppRoutes() {
   const { user } = useAuth();
   useListener(user); // Initialize listener when the user is available
+  useFCM(user);      // Initialize FCM token once per authenticated session
   return (
     <Routes>
       {/* Landing page — public, shown to unauthenticated visitors at "/" */}

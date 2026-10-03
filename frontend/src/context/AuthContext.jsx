@@ -61,8 +61,18 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await syncUser();
       if (res.data && res.data.user) {
-        setMongoUser(res.data.user);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
+        const newUser = res.data.user;
+        setMongoUser((prev) => {
+          if (!prev) return newUser;
+          const prevKeys = Object.keys(prev);
+          const newKeys = Object.keys(newUser);
+          if (prevKeys.length !== newKeys.length) return newUser;
+          for (const key of newKeys) {
+            if (prev[key] !== newUser[key]) return newUser;
+          }
+          return prev; // No change: preserve object reference to prevent rerenders
+        });
+        localStorage.setItem('user', JSON.stringify(newUser));
       }
     } catch (err) {
       console.error('Failed to sync user with backend:', err);
@@ -111,8 +121,17 @@ export const AuthProvider = ({ children }) => {
    * Update MongoDB user profile in local state.
    */
   const updateUser = useCallback((userData) => {
+    if (!userData) return;
     setMongoUser((prev) => {
       if (!prev) return prev;
+      let hasChange = false;
+      for (const [key, value] of Object.entries(userData)) {
+        if (prev[key] !== value) {
+          hasChange = true;
+          break;
+        }
+      }
+      if (!hasChange) return prev; // Preserve reference equality
       const updated = { ...prev, ...userData };
       localStorage.setItem('user', JSON.stringify(updated));
       return updated;
