@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { getWasteStats, getWasteHistory, updateProfile, uploadAvatar, getProfile } from '../services/api';
@@ -24,7 +23,6 @@ function getQuizResults() {
 
 export default function ProfilePage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { user, logout, updateUser } = useAuth();
   const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const { statsData } = useStats();
@@ -42,14 +40,6 @@ export default function ProfilePage() {
   const [editPicFile, setEditPicFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Keep form inputs synced when user profile changes
-  useEffect(() => {
-    if (user) {
-      setEditName(user.name || '');
-      setEditPic(user.avatarUrl || '');
-    }
-  }, [user]);
-
   // Escape closes any open modal (a11y)
   useEffect(() => {
     if (!activeModal) return;
@@ -66,7 +56,7 @@ export default function ProfilePage() {
       if (histRes.status === 'fulfilled') setTotalLogs(histRes.value.data.pagination.total);
       if (profileRes.status === 'fulfilled') updateUser(profileRes.value.data);
     });
-  }, [updateUser]);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -98,38 +88,17 @@ export default function ProfilePage() {
     if (!editName.trim()) return;
     setIsSaving(true);
     try {
-      let updatedUserData = null;
-
       if (editPicFile) {
         const formData = new FormData();
         formData.append('avatar', editPicFile);
-        const avatarRes = await uploadAvatar(formData);
-        if (avatarRes?.data) {
-          updatedUserData = avatarRes.data;
-        }
+        await uploadAvatar(formData);
       }
-
-      const profileRes = await updateProfile({ name: editName.trim() });
-      if (profileRes?.data) {
-        updatedUserData = { ...(updatedUserData || {}), ...profileRes.data };
-      }
-
-      // Update frontend AuthContext and localStorage immediately
-      if (updatedUserData) {
-        updateUser(updatedUserData);
-      } else {
-        updateUser({ name: editName.trim() });
-      }
-
-      // Invalidate profile query in cache for other components
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-
-      // Close modal and reset file state (no page reload)
-      setEditPicFile(null);
-      setActiveModal(null);
+      await updateProfile({ name: editName });
+      // In a real app, we'd update AuthContext user object here.
+      // For now, reload the page to refresh the context.
+      window.location.reload();
     } catch (err) {
       alert(err.message || 'Failed to update profile');
-    } finally {
       setIsSaving(false);
     }
   };

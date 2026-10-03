@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
 import Loader from '../components/common/Loader';
@@ -277,24 +276,19 @@ export default function CommunityPage() {
 
   useEffect(() => { syncMarkers(); }, [syncMarkers]);
 
-  /* ── Load events using cached query ───────────────────────────── */
-  const { data: eventsData, isLoading: eventsLoading } = useQuery({
-    queryKey: ['events', 'upcoming'],
-    queryFn: async () => {
-      const res = await getUpcomingEvents();
-      return Array.isArray(res.data) ? res.data : [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
+  /* ── Load events on mount ──────────────────────────────────────── */
   useEffect(() => {
-    if (eventsData) {
-      setEvents(eventsData);
-      setLoading(false);
-    } else if (!eventsLoading) {
-      setLoading(false);
-    }
-  }, [eventsData, eventsLoading]);
+    (async () => {
+      try {
+        const { data } = await getUpcomingEvents();
+        setEvents(data);
+      } catch (err) {
+        console.error('Failed to load events:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   /* ── Locate user & fetch nearby bins ───────────────────────────── */
   const handleLocate = useCallback(() => {

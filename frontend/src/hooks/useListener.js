@@ -7,10 +7,8 @@ import { messaging } from "../lib/firebase";
 // listen to foreground notifications and show toast and browser notification
 export default function useListener(user) {
     const { addNotification } = useNotifications();
-    const userId = user?._id || user?.id;
-
     useEffect(() => {
-        if (!userId || !messaging) return;
+        if (!user || !messaging) return;
 
         const unsubscribe = onMessage(messaging, (payload) => {
           
@@ -33,5 +31,5 @@ export default function useListener(user) {
         });
 
         return unsubscribe;
-    }, [userId]);
+    }, [user]);
 }

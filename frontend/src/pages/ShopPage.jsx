@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
 import Loader from '../components/common/Loader';
-import { useAuth } from '../context/AuthContext';
 import { getProducts, getMyVouchers, getProfile, getProductRedirectUrl } from '../services/api';
 import '../styles/shop.css';
 
@@ -38,46 +36,38 @@ const FILTER_CHIPS = ['All', 'Home', 'Kitchen', 'Reusable', 'Zero Waste', 'Elect
 
 export default function ShopPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
 
+  const [products,      setProducts]      = useState([]);
+  const [myVouchers,    setMyVouchers]    = useState([]);
+  const [userPoints,    setUserPoints]    = useState(0);
   const [activeChip,    setActiveChip]    = useState('All');
   const [searchQuery,   setSearchQuery]   = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [revealedCodes, setRevealedCodes] = useState({});
+  const [loading,       setLoading]       = useState(true);
 
-  const { data: productsData, isLoading: productsLoading } = useQuery({
-    queryKey: ['products'],
-    queryFn: async () => {
-      const res = await getProducts();
-      const list = Array.isArray(res.data) ? res.data : (res.data?.products || []);
-      return list.length > 0 ? list : FALLBACK_PRODUCTS;
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: vouchersData } = useQuery({
-    queryKey: ['vouchers', 'my'],
-    queryFn: async () => {
-      const res = await getMyVouchers();
-      return Array.isArray(res.data) ? res.data : [];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: profileData } = useQuery({
-    queryKey: ['profile'],
-    queryFn: async () => {
-      const res = await getProfile();
-      return res.data;
-    },
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const products = productsData || FALLBACK_PRODUCTS;
-  const myVouchers = vouchersData || [];
-  const userPoints = profileData?.ecoPoints ?? user?.ecoPoints ?? 0;
-  const loading = productsLoading && !productsData;
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [pRes, vRes, uRes] = await Promise.all([
+          getProducts(),
+          getMyVouchers(),
+          getProfile(),
+        ]);
+        const list = Array.isArray(pRes.data) ? pRes.data : (pRes.data?.products || []);
+        setProducts(list.length > 0 ? list : FALLBACK_PRODUCTS);
+        setMyVouchers(Array.isArray(vRes.data) ? vRes.data : []);
+        setUserPoints(uRes.data?.user?.ecoPoints ?? uRes.data?.ecoPoints ?? 0);
+      } catch (err) {
+        // On error, show fallback products but surface the failure for debugging.
+        if (import.meta.env.DEV) console.error('[shop] failed to load:', err?.message || err);
+        setProducts(FALLBACK_PRODUCTS);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const toggleCode = (id) => setRevealedCodes(p => ({ ...p, [id]: !p[id] }));
 
