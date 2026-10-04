@@ -21,6 +21,7 @@ import DashboardPage       from './pages/DashboardPage';
 import WasteLogPage        from './pages/WasteLogPage';
 import ImpactPage          from './pages/ImpactPage';
 import ShopPage            from './pages/ShopPage';
+import ShopSearchPage      from './pages/ShopSearchPage';
 import CommunityPage       from './pages/CommunityPage';
 import ProfilePage         from './pages/ProfilePage';
 import LearnPage           from './pages/LearnPage';
@@ -88,7 +89,8 @@ function AppRoutes() {
       <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
       <Route path="/waste"     element={<ProtectedRoute><WasteLogPage  /></ProtectedRoute>} />
       <Route path="/impact"    element={<ProtectedRoute><ImpactPage    /></ProtectedRoute>} />
-      <Route path="/shop"      element={<ProtectedRoute><ShopPage      /></ProtectedRoute>} />
+      <Route path="/shop"        element={<ProtectedRoute><ShopPage        /></ProtectedRoute>} />
+      <Route path="/shop/search" element={<ProtectedRoute><ShopSearchPage  /></ProtectedRoute>} />
       <Route path="/community" element={<ProtectedRoute><CommunityPage /></ProtectedRoute>} />
       <Route path="/profile"   element={<ProtectedRoute><ProfilePage   /></ProtectedRoute>} />
       <Route path="/learn"        element={<ProtectedRoute><LearnPage        /></ProtectedRoute>} />

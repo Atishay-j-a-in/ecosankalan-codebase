@@ -93,11 +93,9 @@
   padding: 1.5rem;
   background: var(--primary-container);
   color: var(--on-primary-container);
-  cursor: pointer;
   margin-bottom: 2.5rem;
-  transition: filter 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
-.log-ai-card:hover { filter: brightness(1.07); }
 
 .log-ai-bg-icon {
   position: absolute;
@@ -106,9 +104,7 @@
   padding: 2rem;
   opacity: 0.10;
   pointer-events: none;
-  transition: transform 0.3s;
 }
-.log-ai-card:hover .log-ai-bg-icon { transform: scale(1.1); }
 
 .log-ai-content { position: relative; z-index: 1; }
 

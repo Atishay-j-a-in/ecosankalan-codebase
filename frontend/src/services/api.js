@@ -96,9 +96,10 @@ export const getWasteHistory = (params = {}) =>
 export const getWasteStats = (range = 'week') =>
   api.get('/api/v1/waste/stats', { params: { range } });
 
-export const scanWasteImage = (formData) =>
+export const scanWasteImage = (formData, config = {}) =>
   api.post('/api/v1/waste/scan', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    ...config,
   });
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -114,8 +115,8 @@ export const createBin = (data) => api.post('/api/v1/bins', data);
 // MAP MARKERS  (from DB — no direct OSM calls)
 // ════════════════════════════════════════════════════════════════════════════
 
-export const getMapMarkers = (bounds) =>
-  api.get('/api/v1/markers', { params: bounds });
+export const getMapMarkers = (bounds, config = {}) =>
+  api.get('/api/v1/markers', { params: bounds, ...config });
 
 // ════════════════════════════════════════════════════════════════════════════
 // EVENTS  (FR-13, FR-14)

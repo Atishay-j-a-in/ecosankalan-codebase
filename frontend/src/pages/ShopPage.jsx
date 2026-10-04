@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
 import Loader from '../components/common/Loader';
@@ -37,36 +38,40 @@ const FILTER_CHIPS = ['All', 'Home', 'Kitchen', 'Reusable', 'Zero Waste', 'Elect
 export default function ShopPage() {
   const navigate = useNavigate();
 
-  const [products,      setProducts]      = useState([]);
   const [myVouchers,    setMyVouchers]    = useState([]);
   const [userPoints,    setUserPoints]    = useState(0);
   const [activeChip,    setActiveChip]    = useState('All');
   const [searchQuery,   setSearchQuery]   = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const [revealedCodes, setRevealedCodes] = useState({});
-  const [loading,       setLoading]       = useState(true);
+
+  const { data: products = [], isLoading: productsLoading } = useQuery({
+    queryKey: ['products'],
+    queryFn: async () => {
+      const pRes = await getProducts();
+      const list = Array.isArray(pRes.data) ? pRes.data : (pRes.data?.products || []);
+      return list.length > 0 ? list : FALLBACK_PRODUCTS;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const load = async () => {
+    const loadData = async () => {
       try {
-        const [pRes, vRes, uRes] = await Promise.all([
-          getProducts(),
+        const [vRes, uRes] = await Promise.all([
           getMyVouchers(),
           getProfile(),
         ]);
-        const list = Array.isArray(pRes.data) ? pRes.data : (pRes.data?.products || []);
-        setProducts(list.length > 0 ? list : FALLBACK_PRODUCTS);
         setMyVouchers(Array.isArray(vRes.data) ? vRes.data : []);
         setUserPoints(uRes.data?.user?.ecoPoints ?? uRes.data?.ecoPoints ?? 0);
       } catch (err) {
-        // On error, show fallback products but surface the failure for debugging.
-        if (import.meta.env.DEV) console.error('[shop] failed to load:', err?.message || err);
-        setProducts(FALLBACK_PRODUCTS);
+        if (import.meta.env.DEV) console.error('[shop] failed to load profile/vouchers:', err?.message || err);
       } finally {
         setLoading(false);
       }
     };
-    load();
+    loadData();
   }, []);
 
   const toggleCode = (id) => setRevealedCodes(p => ({ ...p, [id]: !p[id] }));
@@ -82,7 +87,6 @@ export default function ShopPage() {
     if (product._id === '3' || product._id === '6') return window.open('https://www.decathlon.in/', '_blank');
     
     if (product._id && !product._id.startsWith('fallback')) {
-      // Real product — use backend redirect (appends utm_source=ecosankalan)
       window.open(getProductRedirectUrl(product._id), '_blank', 'noopener,noreferrer');
     } else {
       navigate('/product-detail', { state: { product } });
@@ -95,10 +99,6 @@ export default function ShopPage() {
     return matchesChip && matchesSearch;
   });
 
-  const suggestions = searchQuery 
-    ? products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map(p => p.name).slice(0, 5)
-    : [];
-
   const maskCode = (code) => {
     if (!code) return '••••••••';
     return code.slice(0, 3) + '•'.repeat(Math.max(0, code.length - 5)) + code.slice(-2);
@@ -110,36 +110,27 @@ export default function ShopPage() {
     return `Valid until ${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`;
   };
 
-  // Show only active vouchers (not expired)
   const activeVouchers = myVouchers.filter(v => !v.expiresAt || new Date(v.expiresAt) > new Date());
 
   return (
     <div className="shop-root">
       <main className="shop-main">
 
-        {/* Search */}
-        <div className="shop-search-wrap" style={{ position: 'relative' }}>
-          <span className="material-symbols-outlined shop-search-icon">shopping_bag</span>
+        {/* Search Input Bar - Navigates to dedicated /shop/search page */}
+        <div 
+          className="shop-search-wrap" 
+          onClick={() => navigate('/shop/search')}
+          style={{ cursor: 'pointer' }}
+        >
+          <span className="material-symbols-outlined shop-search-icon">search</span>
           <input 
             className="shop-search-input" 
             placeholder="Search eco products..." 
             type="text" 
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setShowSuggestions(true);
-            }}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+            readOnly
+            style={{ cursor: 'pointer' }}
           />
-          {showSuggestions && searchQuery && suggestions.length > 0 && (
-            <div className="shop-search-suggestions" style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--surface-container)', borderRadius: '12px', marginTop: '0.5rem', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-              {suggestions.map((sug, i) => (
-                <div key={i} style={{ padding: '0.75rem 1rem', borderBottom: i === suggestions.length - 1 ? 'none' : '1px solid var(--surface-dim)', cursor: 'pointer', fontSize: '0.875rem' }} onMouseDown={(e) => { e.preventDefault(); setSearchQuery(sug); setShowSuggestions(false); }}>
-                  {sug}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Hero */}
@@ -148,6 +139,7 @@ export default function ShopPage() {
             <h1 className="shop-hero-title">Curated for the <span className="shop-hero-accent">Conscious</span></h1>
             <p className="shop-hero-desc">Redeem your hard-earned eco-points for premium sustainable essentials. High impact, zero waste, delivered to your doorstep.</p>
           </div>
+
           <div className="shop-balance-card">
             <div className="shop-balance-icon-wrap">
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>eco</span>
@@ -222,10 +214,15 @@ export default function ShopPage() {
         <section className="shop-section">
           <div className="shop-section-header">
             <h3 className="shop-section-title">Sustainable Picks</h3>
-            <span className="shop-view-all-plain">See All</span>
+            <button 
+              className="shop-view-all" 
+              onClick={() => navigate('/shop/search')}
+            >
+              See All
+            </button>
           </div>
 
-          {loading ? (
+          {productsLoading ? (
             <Loader text="Loading catalog..." />
           ) : (
             <div className="shop-grid">

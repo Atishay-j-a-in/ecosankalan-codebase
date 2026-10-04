@@ -242,36 +242,53 @@ export default function CommunityPage() {
     const binIcon   = createBinIcon(L);
     const eventIcon = createEventIcon(L);
 
-    const items = [
-      ...bins.map(b  => ({ ...b,  _type: 'bin',   _lat: b.location.coordinates[1], _lng: b.location.coordinates[0] })),
-      ...events.map(e => ({ ...e, _type: 'event', _lat: e.location.coordinates[1], _lng: e.location.coordinates[0] })),
-    ];
+    if (activeFilter === 'events') {
+      events.forEach(item => {
+        const lat = item.location?.coordinates?.[1] || item.lat;
+        const lng = item.location?.coordinates?.[0] || item.lng;
+        if (!lat || !lng) return;
 
-    items.forEach(item => {
-      const show =
-        activeFilter === 'all'    ||
-        (activeFilter === 'events' && item._type === 'event') ||
-        (activeFilter === 'nearby' && item._type === 'bin');
+        const eventItem = { ...item, _type: 'event', _lat: lat, _lng: lng };
+        const marker = L.marker([lat, lng], { icon: eventIcon })
+          .addTo(map)
+          .on('click', () => setSelected({ type: 'event', data: eventItem }));
 
-      if (!show) return;
+        const name = eventItem.title;
+        const addr = eventItem.address || '';
+        marker.bindPopup(`
+          <div class="map-popup">
+            <strong>${name}</strong>
+            <span class="map-popup-type">Event</span>
+            <p>${addr}</p>
+          </div>
+        `);
 
-      const icon = item._type === 'bin' ? binIcon : eventIcon;
-      const marker = L.marker([item._lat, item._lng], { icon })
-        .addTo(map)
-        .on('click', () => setSelected({ type: item._type, data: item }));
+        markersRef.current.push({ marker, item: eventItem });
+      });
+    } else if (activeFilter === 'nearby') {
+      bins.forEach(item => {
+        const lat = item.location?.coordinates?.[1] || item.lat;
+        const lng = item.location?.coordinates?.[0] || item.lng;
+        if (!lat || !lng) return;
 
-      const name = item._type === 'bin' ? item.name : item.title;
-      const addr = item.address || '';
-      marker.bindPopup(`
-        <div class="map-popup">
-          <strong>${name}</strong>
-          <span class="map-popup-type">${item._type === 'bin' ? 'Bin' : 'Event'}</span>
-          <p>${addr}</p>
-        </div>
-      `);
+        const binItem = { ...item, _type: 'bin', _lat: lat, _lng: lng };
+        const marker = L.marker([lat, lng], { icon: binIcon })
+          .addTo(map)
+          .on('click', () => setSelected({ type: 'bin', data: binItem }));
 
-      markersRef.current.push({ marker, item });
-    });
+        const name = binItem.name;
+        const addr = binItem.address || '';
+        marker.bindPopup(`
+          <div class="map-popup">
+            <strong>${name}</strong>
+            <span class="map-popup-type">Bin</span>
+            <p>${addr}</p>
+          </div>
+        `);
+
+        markersRef.current.push({ marker, item: binItem });
+      });
+    }
   }, [bins, events, activeFilter]);
 
   useEffect(() => { syncMarkers(); }, [syncMarkers]);
@@ -334,6 +351,14 @@ export default function CommunityPage() {
     );
   }, []);
 
+  const handleFilterClick = useCallback((filterKey) => {
+    setActiveFilter(filterKey);
+    setSelected(null);
+    if (filterKey === 'nearby') {
+      handleLocate();
+    }
+  }, [handleLocate]);
+
   /* ── Fly to selected marker ────────────────────────────────────── */
   useEffect(() => {
     if (!selected || !mapInstanceRef.current) return;
@@ -360,7 +385,7 @@ export default function CommunityPage() {
       <main className="community-map-canvas">
         <div ref={mapRef} className="community-leaflet-map" />
 
-        {mapReady && <WasteMarkers map={mapInstanceRef.current} onMarkerClick={handleWasteMarkerClick} />}
+        {mapReady && <WasteMarkers map={mapInstanceRef.current} activeFilter={activeFilter} onMarkerClick={handleWasteMarkerClick} />}
         {mapReady && <RouteLayer map={mapInstanceRef.current} geometry={route?.geometry} />}
 
         <div className="community-floating-top">
@@ -409,7 +434,7 @@ export default function CommunityPage() {
           <div className="community-chips">
             {filters.map(f => (
               <button key={f.key} className={`community-chip${activeFilter === f.key ? ' active' : ''}`}
-                onClick={() => setActiveFilter(f.key)}>
+                onClick={() => handleFilterClick(f.key)}>
                 <span className="material-symbols-outlined community-chip-icon">{f.icon}</span>
                 <span>{f.label}</span>
               </button>

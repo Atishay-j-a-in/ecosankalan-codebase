@@ -1,14 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useNotifications } from '../context/NotificationContext';
 import { getWasteStats, getWasteHistory, updateProfile, uploadAvatar, getProfile } from '../services/api';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
 import '../styles/profile.css';
-import '../styles/NotificationDropdown.css';
-
 import { useStats } from '../context/StatsContext';
+
+const formatDisplayName = (name) => {
+  if (!name || typeof name !== 'string') return 'Eco Warrior';
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
 
 const QUIZ_META = {
   'quiz-plastic': { title: 'Plastic Waste',   icon: 'inventory_2',  badge: 'Plastic Expert',     color: '#1b6b3a' },
@@ -24,7 +30,6 @@ function getQuizResults() {
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { user, logout, updateUser } = useAuth();
-  const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const { statsData } = useStats();
   const stats = statsData.all; // All-time stats
   const quizResults = getQuizResults();
@@ -63,27 +68,6 @@ export default function ProfilePage() {
     navigate('/login', { replace: true });
   };
 
-  const handleNotificationClick = (notification) => {
-    markAsRead(notification.id);
-    switch (notification.data?.type) {
-      case "challenge":
-        navigate(`/challenge/${notification.data.challengeId}`);
-        break;
-      case "quiz":
-        navigate(`/quiz/${notification.data.quizId}`);
-        break;
-      case "reward":
-        navigate("/rewards");
-        break;
-      case "level":
-        navigate("/profile");
-        break;
-      default:
-        break;
-    }
-    setActiveModal(null);
-  };
-
   const handleSaveProfile = async () => {
     if (!editName.trim()) return;
     setIsSaving(true);
@@ -93,12 +77,17 @@ export default function ProfilePage() {
         formData.append('avatar', editPicFile);
         await uploadAvatar(formData);
       }
-      await updateProfile({ name: editName });
-      // In a real app, we'd update AuthContext user object here.
-      // For now, reload the page to refresh the context.
-      window.location.reload();
+      const updated = await updateProfile({ name: editName });
+      if (updated?.data) {
+        updateUser(updated.data);
+      } else {
+        const freshProfile = await getProfile();
+        if (freshProfile?.data) updateUser(freshProfile.data);
+      }
+      setActiveModal(null);
     } catch (err) {
       alert(err.message || 'Failed to update profile');
+    } finally {
       setIsSaving(false);
     }
   };
@@ -143,8 +132,6 @@ export default function ProfilePage() {
 
   const SETTINGS = [
     ...(user?.role === 'admin' ? [{ icon: 'admin_panel_settings', label: 'Admin Dashboard', action: () => navigate('/admin') }] : []),
-    { icon: 'person_edit',          label: 'Edit Profile',  action: () => setActiveModal('edit') },
-    { icon: 'notifications_active', label: 'Notifications', action: () => setActiveModal('notifications') },
     { icon: 'lock',                 label: 'Privacy',       action: () => setActiveModal('privacy') },
   ];
 
@@ -170,14 +157,13 @@ export default function ProfilePage() {
             </div>
             <div className="profile-hero-info">
               <div className="profile-hero-name-row">
-                <h2 className="profile-hero-name">{user?.name || 'Eco Warrior'}</h2>
-                <span className="profile-hero-level">LEVEL 5 SUSTAINABILITY HERO</span>
+                <h2 className="profile-hero-name">{formatDisplayName(user?.name)}</h2>
               </div>
               <div className="profile-hero-location">
                 <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>email</span>
                 <span>{user?.email || 'user@example.com'}</span>
               </div>
-              <p className="profile-hero-bio">Dedicated to a zero-waste lifestyle since 2022. Turning daily habits into planetary impact.</p>
+              {user?.bio && <p className="profile-hero-bio">{user.bio}</p>}
             </div>
             <button className="profile-edit-btn" onClick={() => setActiveModal('edit')}>
               <span className="material-symbols-outlined" style={{ fontSize: '0.875rem' }}>edit</span>
@@ -384,37 +370,6 @@ export default function ProfilePage() {
               </>
             )}
 
-            {activeModal === 'notifications' && (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Notifications</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {notifications.length > 0 && (
-                      <button className="mark-all-btn" onClick={markAllAsRead}>Mark all as read</button>
-                    )}
-                    <button onClick={() => setActiveModal(null)} style={{ background: 'transparent', border: 'none', color: 'var(--on-surface-variant)' }}><span className="material-symbols-outlined">close</span></button>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', maxHeight: '60vh', overflowY: 'auto' }}>
-                  {notifications.length === 0 ? (
-                    <div className="notification-empty">No notifications yet.</div>
-                  ) : (
-                    notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`notification-item ${notification.read ? '' : 'notification-unread'}`}
-                        onClick={() => handleNotificationClick(notification)}
-                      >
-                        <div className="notification-title">{notification.title}</div>
-                        <div className="notification-body">{notification.body}</div>
-                        <div className="notification-time">{formatTime(notification.receivedAt)}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </>
-            )}
-
             {activeModal === 'privacy' && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
@@ -449,12 +404,4 @@ export default function ProfilePage() {
       <BottomNav />
     </div>
   );
-}
-
-function formatTime(date) {
-  const diff = Math.floor((Date.now() - new Date(date)) / 1000);
-  if (diff < 60) return "Just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
-  return `${Math.floor(diff / 86400)} day ago`;
 }

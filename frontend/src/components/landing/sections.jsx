@@ -138,11 +138,11 @@ export function FeaturesSection() {
 
 /* ── HOW IT WORKS ──────────────────────────────────────────── */
 const STEPS = [
-  { label: 'Scan Waste',     desc: 'Use AI to identify items.',       active: true  },
-  { label: 'Log Waste',      desc: 'Confirm and record log.',         active: true  },
-  { label: 'Learn',          desc: 'Complete micro-lessons.',         active: true  },
-  { label: 'Join Community', desc: 'Collaborate on tasks.',           active: false },
-  { label: 'Redeem',         desc: 'Spend your eco points.',          active: false },
+  { label: 'Scan Waste',     desc: 'Use AI to identify items.',       active: true },
+  { label: 'Log Waste',      desc: 'Confirm and record log.',         active: true },
+  { label: 'Learn',          desc: 'Complete micro-lessons.',         active: true },
+  { label: 'Join Community', desc: 'Collaborate on tasks.',           active: true },
+  { label: 'Redeem',         desc: 'Spend your eco points.',          active: true },
 ];
 
 export function HowItWorksSection() {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import Navbar from '../components/common/Navbar';
 import BottomNav from '../components/common/BottomNav';
 import DashboardSkeleton from '../components/dashboard/DashboardSkeleton';
@@ -44,7 +45,15 @@ export default function DashboardPage() {
   const stats = statsData.week; // waste stats
   const recentLogs = stats?.recentLogs || []; // recent waste logs
   
-  const [challenges, setChallenges] = useState([]);     // active challenges
+  const { data: challenges = [] } = useQuery({
+    queryKey: ['challenges', 'active'],
+    queryFn: async () => {
+      const res = await getActiveChallenges();
+      return res.data || [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const [events,     setEvents]     = useState([]);     // upcoming events
   const [profile,    setProfile]    = useState(null);   // user profile
 
@@ -66,13 +75,11 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadAll = async () => {
       try {
-        const [challengesRes, eventsRes, profileRes] = await Promise.allSettled([
-          getActiveChallenges(),
+        const [eventsRes, profileRes] = await Promise.allSettled([
           getUpcomingEvents(),
           getProfile()
         ]);
 
-        if (challengesRes.status === 'fulfilled') setChallenges(challengesRes.value.data);
         if (eventsRes.status === 'fulfilled')     setEvents(eventsRes.value.data);
         if (profileRes.status === 'fulfilled') {
           setProfile(profileRes.value.data);
@@ -140,31 +147,26 @@ export default function DashboardPage() {
   const co2Saved   = stats?.totalCo2Saved ?? 0;
   const userName   = profile?.name?.split(' ')[0] || 'Eco Warrior';
 
-  // Use active challenges for the carousel; pad with placeholder if empty
-  const carouselItems = challenges.length > 0
-    ? challenges.map((ch, i) => {
-        // Pick a nice nature background based on index
-        const bgImgs = [
-          'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&q=80',
-          'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&q=80',
-          'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=800&q=80',
-          'https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?w=800&q=80'
-        ];
-        return {
-          id: ch._id,
-          tag: 'Weekly Mission',
-          title: ch.title,
-          desc: ch.description || `Complete tasks and earn ${ch.rewardPoints || 100} eco points.`,
-          progress: 0,
-          participants: '—',
-          img: bgImgs[i % bgImgs.length],
-          _raw: ch,
-        };
-      })
-    : [
-        { id: 1, tag: 'Weekly Mission', title: 'Zero-Plastic Week', desc: 'Join others in avoiding single-use plastics for 7 days.', progress: 65, participants: '1,240', img: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&q=80' },
-        { id: 2, tag: 'Community Event', title: 'Compost Champion', desc: 'Log organic waste every day for 2 weeks and earn 500 bonus points.', progress: 40, participants: '872', img: 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&q=80' },
-      ];
+  // Use active challenges for the carousel
+  const carouselItems = challenges.map((ch, i) => {
+    // Pick a nice nature background based on index
+    const bgImgs = [
+      'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&q=80',
+      'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=800&q=80',
+      'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?w=800&q=80',
+      'https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?w=800&q=80'
+    ];
+    return {
+      id: ch._id,
+      tag: 'Weekly Mission',
+      title: ch.title,
+      desc: ch.description || `Complete tasks and earn ${ch.rewardPoints || 100} eco points.`,
+      progress: ch.userProgress?.percentCompleted || 0,
+      participants: '—',
+      img: bgImgs[i % bgImgs.length],
+      _raw: ch,
+    };
+  });
 
   // Build activity feed from recent logs, with fallback if totally empty
   const activityFeed = recentLogs.length > 0 
@@ -306,40 +308,51 @@ export default function DashboardPage() {
             <div className="challenge-col">
               <div className="challenge-col-header">
                 <h2 className="section-title">Current Challenges</h2>
-                <span className="challenge-counter">{activeSlide + 1} / {carouselItems.length}</span>
+                <span className="challenge-counter">{carouselItems.length > 0 ? `${activeSlide + 1} / ${carouselItems.length}` : '0 / 0'}</span>
               </div>
-              <div className="challenge-carousel" ref={carouselRef} onScroll={handleCarouselScroll}>
-                {carouselItems.map((ch) => (
-                  <div className="challenge-slide" key={ch.id}>
-                    <div className="challenge-card">
-                      <div className="challenge-image-wrapper">
-                        <img className="challenge-bg" src={ch.img} alt={ch.title} />
-                        <span className="challenge-tag">{ch.tag}</span>
-                      </div>
-                      <div className="challenge-content">
-                        <h3 className="challenge-title">{ch.title}</h3>
-                        <p className="challenge-desc">{ch.desc}</p>
-                        <div className="challenge-meta-row">
-                          <span className="material-symbols-outlined challenge-people-icon">group</span>
-                          <span className="challenge-people">{ch.participants} joined</span>
+              {carouselItems.length > 0 ? (
+                <>
+                  <div className="challenge-carousel" ref={carouselRef} onScroll={handleCarouselScroll}>
+                    {carouselItems.map((ch) => (
+                      <div className="challenge-slide" key={ch.id}>
+                        <div className="challenge-card">
+                          <div className="challenge-image-wrapper">
+                            <img className="challenge-bg" src={ch.img} alt={ch.title} />
+                            <span className="challenge-tag">{ch.tag}</span>
+                          </div>
+                          <div className="challenge-content">
+                            <h3 className="challenge-title">{ch.title}</h3>
+                            <p className="challenge-desc">{ch.desc}</p>
+                            <div className="challenge-meta-row">
+                              <span className="material-symbols-outlined challenge-people-icon">group</span>
+                              <span className="challenge-people">{ch.participants} joined</span>
+                            </div>
+                            <div className="challenge-progress-bar">
+                              <div className="challenge-progress-fill" style={{ width: `${ch.progress}%` }} />
+                            </div>
+                            <button className="challenge-btn" onClick={() => navigate('/weekly-challenges')}>
+                              Accept Challenge
+                              <span className="material-symbols-outlined">arrow_forward</span>
+                            </button>
+                          </div>
                         </div>
-                        <div className="challenge-progress-bar">
-                          <div className="challenge-progress-fill" style={{ width: `${ch.progress}%` }} />
-                        </div>
-                        <button className="challenge-btn" onClick={() => navigate('/weekly-challenges')}>
-                          Accept Challenge
-                          <span className="material-symbols-outlined">arrow_forward</span>
-                        </button>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="challenge-dots">
-                {carouselItems.map((_, i) => (
-                  <button key={i} className={`challenge-dot${activeSlide === i ? ' active' : ''}`} onClick={() => scrollToSlide(i)} aria-label={`Go to challenge ${i + 1}`} />
-                ))}
-              </div>
+                  <div className="challenge-dots">
+                    {carouselItems.map((_, i) => (
+                      <button key={i} className={`challenge-dot${activeSlide === i ? ' active' : ''}`} onClick={() => scrollToSlide(i)} aria-label={`Go to challenge ${i + 1}`} />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="wc-preview-card" style={{ padding: '24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} onClick={() => navigate('/weekly-challenges')}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'var(--outline)', marginBottom: '8px' }}>emoji_events</span>
+                  <h4 className="wc-preview-title" style={{ fontSize: '1rem', marginBottom: '4px' }}>No Active Challenges</h4>
+                  <p style={{ fontSize: '0.825rem', color: 'var(--on-surface-variant)', marginBottom: '12px' }}>Check back soon for new weekly missions!</p>
+                  <span className="wc-preview-status not-started">Explore Challenges</span>
+                </div>
+              )}
             </div>
           </section>
 
@@ -358,30 +371,20 @@ export default function DashboardPage() {
                   <div className="wc-preview-info">
                     <h4 className="wc-preview-title">{ch.title}</h4>
                     <div className="wc-preview-bar-wrap">
-                      <div className="wc-preview-bar"><div className="wc-preview-fill" style={{ width: '0%' }} /></div>
-                      <span className="wc-preview-pct">0%</span>
+                      <div className="wc-preview-bar"><div className="wc-preview-fill" style={{ width: `${ch.userProgress?.percentCompleted || 0}%` }} /></div>
+                      <span className="wc-preview-pct">{ch.userProgress?.percentCompleted || 0}%</span>
                     </div>
                   </div>
-                  <span className="wc-preview-status not-started">Not Started</span>
+                  <span className={`wc-preview-status ${ch.joined ? 'in-progress' : 'not-started'}`}>
+                    {ch.joined ? 'In Progress' : 'Not Started'}
+                  </span>
                 </div>
               ))}
 
               {challenges.length === 0 && (
-                <>
-                  <div className="wc-preview-card" onClick={() => navigate('/weekly-challenges')}>
-                    <div className="wc-preview-icon-wrap">
-                      <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>recycling</span>
-                    </div>
-                    <div className="wc-preview-info">
-                      <h4 className="wc-preview-title">Zero-Plastic Week</h4>
-                      <div className="wc-preview-bar-wrap">
-                        <div className="wc-preview-bar"><div className="wc-preview-fill" style={{ width: '60%' }} /></div>
-                        <span className="wc-preview-pct">60%</span>
-                      </div>
-                    </div>
-                    <span className="wc-preview-status in-progress">In Progress</span>
-                  </div>
-                </>
+                <div className="wc-preview-card" style={{ padding: '16px', justifyContent: 'center' }} onClick={() => navigate('/weekly-challenges')}>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)' }}>No active challenges available right now.</span>
+                </div>
               )}
 
               <button className="wc-see-all-btn" onClick={() => navigate('/weekly-challenges')}>

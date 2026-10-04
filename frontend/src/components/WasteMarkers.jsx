@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import axios from 'axios';
 import 'leaflet.markercluster';
 import { getMapMarkers } from '../services/api';
 
@@ -56,7 +57,7 @@ function createWasteIcon(L, filterKey) {
 function buildPopupHTML(loc, filterKey) {
   const meta = getMeta(filterKey);
   const name = loc.name || loc.category;
-  const tagRows = Object.entries(loc.tags)
+  const tagRows = Object.entries(loc.tags || {})
     .filter(([k]) => !k.startsWith('_'))
     .map(([k, v]) => `<tr><td style="color:#666;white-space:nowrap;padding:1px 6px 1px 0">${k}</td><td style="padding:1px 0">${v}</td></tr>`)
     .join('');
@@ -73,7 +74,7 @@ function buildPopupHTML(loc, filterKey) {
         </div>
       </div>
       <div style="font-size:0.75rem;color:#888;margin-bottom:4px">
-        OSM ID: ${loc.osmId} &middot; ${loc.type}<br/>
+        OSM ID: ${loc.osmId || 'N/A'} &middot; ${loc.type || 'Bin'}<br/>
         ${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}
       </div>
       ${tagRows ? `<div style="max-height:120px;overflow-y:auto;margin-top:6px;border-top:1px solid #eee;padding-top:4px"><table style="font-size:0.7rem;border-collapse:collapse;width:100%">${tagRows}</table></div>` : ''}
@@ -81,18 +82,19 @@ function buildPopupHTML(loc, filterKey) {
   `;
 }
 
-export default function WasteMarkers({ map, onMarkerClick }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError]       = useState(null);
+export default function WasteMarkers({ map, activeFilter = 'all', onMarkerClick }) {
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState(null);
   const [chipState, setChipState] = useState(DEFAULT_CATEGORIES);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const layerRef        = useRef(null);
-  const debounceRef     = useRef(null);
-  const clusterEnabled  = useRef(false);
-  const categoriesRef   = useRef(DEFAULT_CATEGORIES);
-  const locationsRef    = useRef([]);
-  const onMarkerClickRef = useRef(onMarkerClick);
+  const layerRef           = useRef(null);
+  const debounceRef        = useRef(null);
+  const clusterEnabled     = useRef(false);
+  const categoriesRef      = useRef(DEFAULT_CATEGORIES);
+  const locationsRef       = useRef([]);
+  const onMarkerClickRef    = useRef(onMarkerClick);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     onMarkerClickRef.current = onMarkerClick;
@@ -102,19 +104,27 @@ export default function WasteMarkers({ map, onMarkerClick }) {
     if (!map || !window.L) return;
 
     const L = window.L;
+
+    if (!layerRef.current) {
+      layerRef.current = L.layerGroup();
+      map.addLayer(layerRef.current);
+    }
+
+    layerRef.current.clearLayers();
+
+    if (activeFilter === 'events') {
+      return;
+    }
+
     const activeKeys = new Set(
       categoriesRef.current.filter(c => c.active).map(c => c.key)
     );
 
     const locations = locationsRef.current;
-
-    if (layerRef.current) {
-      layerRef.current.clearLayers();
-    }
-
     const useCluster = locations.length > 500;
+
     if (useCluster && !clusterEnabled.current) {
-      if (layerRef.current) map.removeLayer(layerRef.current);
+      map.removeLayer(layerRef.current);
       layerRef.current = L.markerClusterGroup({
         chunkedLoading: true,
         maxClusterRadius: 50,
@@ -132,13 +142,10 @@ export default function WasteMarkers({ map, onMarkerClick }) {
       map.addLayer(layerRef.current);
       clusterEnabled.current = true;
     } else if (!useCluster && clusterEnabled.current) {
-      if (layerRef.current) map.removeLayer(layerRef.current);
+      map.removeLayer(layerRef.current);
       layerRef.current = L.layerGroup();
       map.addLayer(layerRef.current);
       clusterEnabled.current = false;
-    } else if (!layerRef.current) {
-      layerRef.current = L.layerGroup();
-      map.addLayer(layerRef.current);
     }
 
     for (const loc of locations) {
@@ -149,14 +156,32 @@ export default function WasteMarkers({ map, onMarkerClick }) {
       const marker = L.marker([loc.lat, loc.lng], { icon });
       marker.bindPopup(buildPopupHTML(loc, filterKey), { maxWidth: 300 });
       marker.on('click', () => {
-        if (onMarkerClickRef.current) onMarkerClickRef.current({ lat: loc.lat, lng: loc.lng, name: loc.name || loc.category, category: loc.category });
+        if (onMarkerClickRef.current) {
+          onMarkerClickRef.current({
+            lat: loc.lat,
+            lng: loc.lng,
+            name: loc.name || loc.category,
+            category: loc.category,
+            _lat: loc.lat,
+            _lng: loc.lng,
+          });
+        }
       });
       layerRef.current.addLayer(marker);
     }
-  }, [map]);
+  }, [map, activeFilter]);
 
   const fetchData = useCallback(async (bounds) => {
-    if (!bounds) return;
+    if (!bounds || activeFilter === 'events') {
+      setLoading(false);
+      return;
+    }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setLoading(true);
     setError(null);
@@ -167,20 +192,29 @@ export default function WasteMarkers({ map, onMarkerClick }) {
         south: bounds.south,
         east: bounds.east,
         west: bounds.west,
-      });
+      }, { signal: controller.signal });
+
+      if (controller.signal.aborted) return;
 
       locationsRef.current = data.locations || [];
       renderMarkers();
       setHasLoaded(true);
     } catch (err) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError' || axios.isCancel?.(err)) {
+        return;
+      }
       console.error('[WasteMarkers] Fetch error:', err);
       setError(err.message || 'Failed to load markers');
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller && !controller.signal.aborted) {
+        setLoading(false);
+      }
     }
-  }, [renderMarkers]);
+  }, [renderMarkers, activeFilter]);
 
   const onMapMove = useCallback(() => {
+    if (activeFilter === 'events') return;
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       if (!map) return;
@@ -191,11 +225,22 @@ export default function WasteMarkers({ map, onMarkerClick }) {
         east: b.getEast(),
         west: b.getWest(),
       });
-    }, 500);
-  }, [map, fetchData]);
+    }, 400);
+  }, [map, fetchData, activeFilter]);
 
   useEffect(() => {
     if (!map) return;
+
+    if (activeFilter === 'events') {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      setLoading(false);
+      if (layerRef.current) {
+        layerRef.current.clearLayers();
+      }
+      return;
+    }
 
     map.on('moveend', onMapMove);
     map.on('zoomend', onMapMove);
@@ -212,12 +257,9 @@ export default function WasteMarkers({ map, onMarkerClick }) {
       map.off('moveend', onMapMove);
       map.off('zoomend', onMapMove);
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (layerRef.current) {
-        map.removeLayer(layerRef.current);
-        layerRef.current = null;
-      }
+      if (abortControllerRef.current) abortControllerRef.current.abort();
     };
-  }, [map]);
+  }, [map, activeFilter, onMapMove, fetchData]);
 
   const toggleCategory = (key) => {
     setChipState(prev => {
@@ -230,6 +272,10 @@ export default function WasteMarkers({ map, onMarkerClick }) {
   useEffect(() => {
     renderMarkers();
   }, [chipState, renderMarkers]);
+
+  if (activeFilter === 'events') {
+    return null;
+  }
 
   return (
     <div className="waste-markers-ui">

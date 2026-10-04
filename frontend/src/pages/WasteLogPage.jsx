@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import BottomNav from '../components/common/BottomNav';
 import Navbar from '../components/common/Navbar';
 import { logWaste, scanWasteImage } from '../services/api';
@@ -34,6 +35,7 @@ export default function WasteLogPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+  const abortControllerRef = useRef(null);
   const { refreshAllStats } = useStats();
 
   const [selected,   setSelected]   = useState('organic');
@@ -47,6 +49,15 @@ export default function WasteLogPage() {
   const [isHazardous, setIsHazardous] = useState(false);
   const [hazardType,  setHazardType]  = useState('');
   const [safetyAck,   setSafetyAck]   = useState(false);
+
+  // Clean up any active scan on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // Escape closes the success modal (a11y)
   useEffect(() => {
@@ -104,9 +115,26 @@ export default function WasteLogPage() {
     fileInputRef.current?.click();
   };
 
+  const handleCancelScan = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setScanning(null);
+    setError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
   const handleFileSelect = async (e, source) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     setScanning(source);
     setError('');
@@ -116,7 +144,9 @@ export default function WasteLogPage() {
     }
 
     try {
-      const { data } = await scanWasteImage(formData);
+      const { data } = await scanWasteImage(formData, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+
       const parsed = data.parsed || {};
       const report = parsed.reports?.[0] || {};
       
@@ -151,10 +181,14 @@ export default function WasteLogPage() {
         },
       });
     } catch (err) {
+      if (axios.isCancel?.(err) || err.name === 'CanceledError' || err.name === 'AbortError') {
+        return; // Silently exit on user cancellation
+      }
       setError(err.message || 'AI scan failed. Please try manual entry.');
     } finally {
-      setScanning(null);
-      // Reset input so same file can be re-selected
+      if (abortControllerRef.current === controller && !controller.signal.aborted) {
+        setScanning(null);
+      }
       e.target.value = '';
     }
   };
@@ -216,6 +250,24 @@ export default function WasteLogPage() {
                 Camera
               </button>
             </div>
+
+            {scanning && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.95)', padding: '0.75rem 1rem', borderRadius: '0.75rem', marginTop: '1rem', color: 'var(--primary)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span className="material-symbols-outlined log-spin" style={{ fontSize: '1.2rem' }}>progress_activity</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Analyzing waste image...</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCancelScan}
+                  style={{ background: 'var(--surface-container-high)', border: 'none', borderRadius: '50%', width: '2rem', height: '2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-surface-variant)' }}
+                  aria-label="Cancel AI scan"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.1rem' }}>close</span>
+                </button>
+              </div>
+            )}
+
             {/* Hidden file input for gallery upload (no capture attribute) */}
             <input
               ref={fileInputRef}

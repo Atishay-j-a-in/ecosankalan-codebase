@@ -314,7 +314,7 @@ export default function ScanResultPage() {
             {submitting ? (
               <><span className="material-symbols-outlined log-spin">progress_activity</span> Logging…</>
             ) : confirmed ? (
-              <><span className="material-symbols-outlined">check_circle</span> Logged! Redirecting…</>
+              <><span className="material-symbols-outlined">check_circle</span> Waste Logged</>
             ) : (
               <>Confirm &amp; Log <span className="material-symbols-outlined">check_circle</span></>
             )}
